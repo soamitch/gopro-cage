@@ -4,8 +4,10 @@
 //   "hero13_dummy" - fake Hero 13, to test the new cage
 //   "cage8"        - cage for the real Hero 8 (should reproduce your current mount: use it to validate the model)
 //   "cage13"       - cage for the Hero 13, lens held in the SAME place relative to the helmet as the Hero 8
+//   "backplate8"   - back plate only (quick fit iterations)
+//   "padtest8"     - just the ledge + curved pad of the back plate (fastest fit test)
 //   "preview8" / "preview13" - cage + red dummy together (use a cross-section view to inspect)
-PART = "backplate8";
+PART = "padtest8";
 
 $fn = 48;
 
@@ -296,6 +298,12 @@ module flipx(w) { translate([w, 0, 0]) mirror([1, 0, 0]) children(); }
 // Back plate only (everything behind the pocket floor), printed face down: quick test of the screws, ramp and pad curve
 module backplate(c) intersection() { cage(c); translate([-200, -200, -200]) cube([400, 200, 400]); }
 if (PART == "backplate8")   rotate([-90, 0, 0]) mirror([1, 0, 0]) backplate(H8);
+// Quick fit test: just the ledge and the curved pad (plus 6 mm of ramp above the ledge), same print orientation
+module padtest(c) intersection() {
+    backplate(c);
+    translate([-200, -200, ref_top - (z_step + pad_h) - 5]) cube([400, 400, pad_h + 5 + 6]);
+}
+if (PART == "padtest8")     rotate([-90, 0, 0]) mirror([1, 0, 0]) padtest(H8);
 if (PART == "hero8_dummy")  flipx(H8[0])  dummy(H8);
 if (PART == "hero13_dummy") flipx(H13[0]) dummy(H13);
 if (PART == "cage8")        mirror([1, 0, 0]) cage(H8);
