@@ -92,7 +92,7 @@ z_step = outer_h8 - pad_h;   // the pad starts this far below the top face (30.4
 // CURVE ACROSS THE WIDTH (the pad is concave so it sits on the forehead of the helmet).
 // Depths from the outside front face, measured on your original:
 pad_top_corner = 40.7;    // top of the pad, at the two outer corners
-pad_top_center = 33.7;    // top of the pad, in the middle
+pad_top_center = 35.3;    // top of the pad, in the middle
 pad_bot_corner = 36.0;   // bottom of the pad, at the corners
 pad_bot_center = 31.0;   // bottom of the pad, in the middle
 
@@ -171,7 +171,7 @@ module dummy(c) {
 function pad_base_center(o) = o <= pad_lip_h ? pad_top_center
                             : pad_top_center + (pad_bot_center - pad_top_center) * (o - pad_lip_h) / (pad_h - pad_lip_h);
 // Sag (corner depth minus centre depth) at entry i of pad_corner; never negative
-function pad_s(i) = max(0, pad_corner[i][1] - pad_base_center(pad_corner[i][0]));
+function pad_s(i) = i < 2 ? 0 : max(0, pad_corner[i][1] - pad_base_center(pad_corner[i][0]));   // entries 0-1 are the flat ramp above the ledge: no sag there
 
 // Outline (in the X-Y plane) of everything BEHIND the pad's curved surface at one height.
 // dc = depth at the corners, s = sag, so the centre is s closer to the front. The curve is a circular arc.
