@@ -93,7 +93,7 @@ z_step = outer_h8 - pad_h;   // the pad starts this far below the top face (30.4
 
 // CURVE ACROSS THE WIDTH (the pad is concave so it sits on the forehead of the helmet).
 // Depths from the outside front face, measured on your original:
-pad_top_corner = 40.7;    // top of the pad, at the two outer corners
+pad_top_corner = 40.5;    // top of the pad, at the two outer corners
 pad_top_center = 35.3;    // top of the pad, in the middle
 pad_bot_corner = 36.0;   // bottom of the pad, at the corners
 pad_bot_center = 31.0;   // bottom of the pad, in the middle
@@ -104,13 +104,15 @@ tri_h        = 10;     // height of the triangular tab at the top (tip to where 
 thin_t       = 4;      // back wall thickness at the thinnest point
 panel_t      = 7.4;    // back wall thickness at the bottom of the ramp
 panel_base   = 18.5;   // vertical length of the ramp
-pad_lip_h  = 4;       // height of the piece between the ledge and the start of the curve
+pad_lip_h  = 4;       // height of the piece between the ledge's outer corner and the thickest point of the curve
+pad_ledge_h = 1.0;    // the ledge itself drops this much as it runs back (measured: 7.5 -> 11.5 mm thick in about 1 mm)
+pad_bulge_o = pad_ledge_h + pad_lip_h;   // height of the thickest point (13 mm) below the top of the ledge
 pad_floor_depth = front_t + (H8[2] - H8[5]) + clear_y;   // outside front face to pocket floor (27.5)
 // the ramp keeps sloping all the way down to the ledge (no vertical piece at its foot, like the original)
 ramp_end_depth = pad_floor_depth + thin_t + (panel_t - thin_t) * (z_step - tri_h) / panel_base;   // ~35.25
 pad_corner = [[0, ramp_end_depth],   // foot of the ramp, at the top of the ledge ...
-              [0, 40.4],                // ... then the ledge goes straight back (flat, no slope) to the pad
-              [pad_lip_h, pad_top_corner],   // outermost point of the pad: the piece between the ledge and the curve is pad_lip_h tall
+              [pad_ledge_h, 39.0],      // ... then the ledge runs back to 11.5 mm thick (39.0 from the front) ...
+              [pad_bulge_o, pad_top_corner],   // ... and slopes out to the thickest point, 13 mm (40.5), pad_lip_h lower
               [10.1, 39.4],
               [14.8, 38.4],
               [18.8, 37.5],
@@ -171,8 +173,8 @@ module dummy(c) {
 
 // Depth of the pad's surface in the CENTRE, by height below z_step: 36 right from the top edge of the pad
 // (so there is no lip above the curve), easing to 31.5 at the bottom
-function pad_base_center(o) = o <= pad_lip_h ? pad_top_center
-                            : pad_top_center + (pad_bot_center - pad_top_center) * (o - pad_lip_h) / (pad_h - pad_lip_h);
+function pad_base_center(o) = o <= pad_bulge_o ? pad_top_center
+                            : pad_top_center + (pad_bot_center - pad_top_center) * (o - pad_bulge_o) / (pad_h - pad_bulge_o);
 // Sag (corner depth minus centre depth) at entry i of pad_corner; never negative
 function pad_s(i) = i < 1 ? 0 : max(0, pad_corner[i][1] - pad_base_center(pad_corner[i][0]));   // entry 0 is the ramp above the ledge: no sag there
 
