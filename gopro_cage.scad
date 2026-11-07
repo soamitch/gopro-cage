@@ -106,8 +106,9 @@ panel_t      = 7.4;    // back wall thickness at the bottom of the ramp
 panel_base   = 18.5;   // vertical length of the ramp
 pad_lip_h  = 4;       // height of the piece between the ledge and the start of the curve
 pad_floor_depth = front_t + (H8[2] - H8[5]) + clear_y;   // outside front face to pocket floor (27.5)
-pad_corner = [[tri_h + panel_base - z_step, pad_floor_depth + panel_t],   // bottom of the ramp (a little above the pad)
-              [0, pad_floor_depth + panel_t],   // straight down to the top of the pad ...
+// the ramp keeps sloping all the way down to the ledge (no vertical piece at its foot, like the original)
+ramp_end_depth = pad_floor_depth + thin_t + (panel_t - thin_t) * (z_step - tri_h) / panel_base;   // ~35.25
+pad_corner = [[0, ramp_end_depth],   // foot of the ramp, at the top of the ledge ...
               [0, 40.4],                // ... then the ledge goes straight back (flat, no slope) to the pad
               [pad_lip_h, pad_top_corner],   // outermost point of the pad: the piece between the ledge and the curve is pad_lip_h tall
               [10.1, 39.4],
@@ -173,7 +174,7 @@ module dummy(c) {
 function pad_base_center(o) = o <= pad_lip_h ? pad_top_center
                             : pad_top_center + (pad_bot_center - pad_top_center) * (o - pad_lip_h) / (pad_h - pad_lip_h);
 // Sag (corner depth minus centre depth) at entry i of pad_corner; never negative
-function pad_s(i) = i < 2 ? 0 : max(0, pad_corner[i][1] - pad_base_center(pad_corner[i][0]));   // entries 0-1 are the flat ramp above the ledge: no sag there
+function pad_s(i) = i < 1 ? 0 : max(0, pad_corner[i][1] - pad_base_center(pad_corner[i][0]));   // entry 0 is the ramp above the ledge: no sag there
 
 // Outline (in the X-Y plane) of everything BEHIND the pad's curved surface at one height.
 // dc = depth at the corners, s = sag, so the centre is s closer to the front. The curve is a circular arc.
