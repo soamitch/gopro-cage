@@ -91,10 +91,10 @@ z_step = outer_h8 - pad_h;   // the pad starts this far below the top face (30.4
 
 // CURVE ACROSS THE WIDTH (the pad is concave so it sits on the forehead of the helmet).
 // Depths from the outside front face, measured on your original:
-pad_top_corner = 41.7;    // top of the pad, at the two outer corners
-pad_top_center = 34.7;    // top of the pad, in the middle
-pad_bot_corner = 38.0;   // bottom of the pad, at the corners
-pad_bot_center = 33.0;   // bottom of the pad, in the middle
+pad_top_corner = 40.7;    // top of the pad, at the two outer corners
+pad_top_center = 33.7;    // top of the pad, in the middle
+pad_bot_corner = 36.0;   // bottom of the pad, at the corners
+pad_bot_center = 31.0;   // bottom of the pad, in the middle
 
 // pad outline at the CORNERS: [offset below z_step, depth from the front]. The curve across the width is cut into this.
 // BACK PANEL (the screw panel): a ramp from the thinnest point (4 mm behind the pocket floor) down to 7.4 mm behind it
@@ -108,10 +108,10 @@ pad_corner = [[tri_h + panel_base - z_step, pad_floor_depth + panel_t],   // bot
               [0, pad_floor_depth + panel_t],   // straight down to the top of the pad ...
               [0, 40.4],                // ... then the ledge goes straight back (flat, no slope) to the pad
               [pad_lip_h, pad_top_corner],   // outermost point of the pad: the piece between the ledge and the curve is pad_lip_h tall
-              [10.1, 40.7],
-              [14.8, 40.2],
-              [18.8, 39.7],
-              [23.8, 38.5],
+              [10.1, 39.4],
+              [14.8, 38.4],
+              [18.8, 37.5],
+              [23.8, 36.4],
               [pad_h, pad_bot_corner]]; // bottom edge
 
 prof = concat(
