@@ -226,15 +226,18 @@ module pad_cut() {
 }
 
 // Back interface block: the side profile, extruded along X over the footprint of the Hero 8 cage
-module interface() {
+module interface(c) {
     prof = make_prof();
     n = len(prof);
     pts = concat(
         [for (i = [0 : n - 2]) [-(prof[i][0] - ref_front_to_floor), ref_top - prof[i][1]]],
         [[-(prof[n-1][0] - ref_front_to_floor), ref_bottom], [0, ref_bottom], [0, ref_top]]
     );
-    translate([ix0, 0, 0]) rotate([90, 0, 90])
-        linear_extrude(height = x_open8 - ix0) polygon(pts);
+    // runs from the open side to the closed wall of THIS cage (for a wider camera the plate continues past the Hero 8 footprint
+    // at the corner depth of the curve, so the back plate is as wide as the cage; the curve itself stays where it is)
+    ixe = min(ix0, cx0(c) - clear - wall_l);
+    translate([ixe, 0, 0]) rotate([90, 0, 90])
+        linear_extrude(height = x_open8 - ixe) polygon(pts);
 }
 
 module cage(c) {
@@ -263,7 +266,7 @@ module cage(c) {
                         translate([ox0, -back_t, oz0]) rbox(xo - ox0 + 10, oz1 - oz0, od, corner_r);
                         translate([ox0 - 1, -back_t - 1, oz0 - 1]) cube([xo - ox0 + 1, od + 2, oz1 - oz0 + 2]);
                     }
-                    interface();
+                    interface(c);
                 }
                 envelope(min(ox0, ix0), max(xo, x_open8) + 10, oz0, oz1, pd + front_t);
             }
