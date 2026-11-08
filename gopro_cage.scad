@@ -5,9 +5,10 @@
 //   "cage8"        - cage for the real Hero 8 (should reproduce your current mount: use it to validate the model)
 //   "cage13"       - cage for the Hero 13, lens held in the SAME place relative to the helmet as the Hero 8
 //   "backplate8"   - back plate only (quick fit iterations)
+//   "padtest_set"  - three pad variants (A/B/C) on one plate, to compare fits in one print
 //   "padtest8"     - just the ledge + curved pad of the back plate (fastest fit test)
 //   "preview8" / "preview13" - cage + red dummy together (use a cross-section view to inspect)
-PART = "padtest8";
+PART = "padtest_set";
 
 $fn = 48;
 
@@ -119,10 +120,13 @@ pad_corner = [[0, ramp_end_depth],   // foot of the ramp, at the top of the ledg
               [23.8, 36.4],
               [pad_h, pad_bot_corner]]; // bottom edge
 
-prof = concat(
+// $pc is the pad profile in use (default: pad_corner). The variant parts below override it.
+$pc = pad_corner;
+
+function make_prof() = concat(
     [[45.85, 0],        // tip of the top tab, flush with the top face (45.85 from the front, measured)
      [pad_floor_depth + thin_t, tri_h]],   // underside of the tab meets the screw panel = thinnest point
-    [for (q = pad_corner) [q[1], z_step + q[0]]]);
+    [for (q = $pc) [q[1], z_step + q[0]]]);
 
 // ---------- Derived: where the lens sits (fixed relative to the helmet) ----------
 x_open8     = open_to_screw;
@@ -176,7 +180,7 @@ module dummy(c) {
 function pad_base_center(o) = o <= pad_bulge_o ? pad_top_center
                             : pad_top_center + (pad_bot_center - pad_top_center) * (o - pad_bulge_o) / (pad_h - pad_bulge_o);
 // Sag (corner depth minus centre depth) at entry i of pad_corner; never negative
-function pad_s(i) = i < 1 ? 0 : max(0, pad_corner[i][1] - pad_base_center(pad_corner[i][0]));   // entry 0 is the ramp above the ledge: no sag there
+function pad_s(i) = len($pc[i]) > 2 ? $pc[i][2] : i < 1 ? 0 : max(0, $pc[i][1] - pad_base_center($pc[i][0]));   // entry 0 is the ramp above the ledge: no sag there
 
 // Outline (in the X-Y plane) of everything BEHIND the pad's curved surface at one height.
 // dc = depth at the corners, s = sag, so the centre is s closer to the front. The curve is a circular arc.
@@ -193,21 +197,22 @@ function pad_slice_pts(dc, s) =
 
 // Cutter that carves the concave curve into the back of the cage
 module pad_cut() {
-    n  = len(pad_corner);
-    zs = [for (q = pad_corner) ref_top - (z_step + q[0])];
+    n  = len($pc);
+    zs = [for (q = $pc) ref_top - (z_step + q[0])];
     for (i = [0 : n - 2])
         hull() {
-            translate([0, 0, zs[i]])     linear_extrude(height = 0.01) polygon(pad_slice_pts(pad_corner[i][1],     pad_s(i)));
-            translate([0, 0, zs[i + 1]]) linear_extrude(height = 0.01) polygon(pad_slice_pts(pad_corner[i + 1][1], pad_s(i + 1)));
+            translate([0, 0, zs[i]])     linear_extrude(height = 0.01) polygon(pad_slice_pts($pc[i][1],     pad_s(i)));
+            translate([0, 0, zs[i + 1]]) linear_extrude(height = 0.01) polygon(pad_slice_pts($pc[i + 1][1], pad_s(i + 1)));
         }
     hull() {   // run past the bottom edge
-        translate([0, 0, zs[n - 1]])     linear_extrude(height = 0.01) polygon(pad_slice_pts(pad_corner[n - 1][1], pad_s(n - 1)));
-        translate([0, 0, zs[n - 1] - 2]) linear_extrude(height = 0.01) polygon(pad_slice_pts(pad_corner[n - 1][1], pad_s(n - 1)));
+        translate([0, 0, zs[n - 1]])     linear_extrude(height = 0.01) polygon(pad_slice_pts($pc[n - 1][1], pad_s(n - 1)));
+        translate([0, 0, zs[n - 1] - 2]) linear_extrude(height = 0.01) polygon(pad_slice_pts($pc[n - 1][1], pad_s(n - 1)));
     }
 }
 
 // Back interface block: the side profile, extruded along X over the footprint of the Hero 8 cage
 module interface() {
+    prof = make_prof();
     n = len(prof);
     pts = concat(
         [for (i = [0 : n - 2]) [-(prof[i][0] - ref_front_to_floor), ref_top - prof[i][1]]],
@@ -301,6 +306,20 @@ module flipx(w) { translate([w, 0, 0]) mirror([1, 0, 0]) children(); }
 // Back plate only (everything behind the pocket floor), printed face down: quick test of the screws, ramp and pad curve
 module backplate(c) intersection() { cage(c); translate([-200, -200, -200]) cube([400, 200, 400]); }
 if (PART == "backplate8")   rotate([-90, 0, 0]) mirror([1, 0, 0]) backplate(H8);
+// ---------- Pad variants, for printing several fit tests at once ----------
+// amp  = S-shape along the pad: the upper part bulges toward the helmet by amp mm, the lower part pulls back by amp mm
+// lipc = how much the middle of the short piece between the ledge and the curve is pulled back (a concave lip)
+function sb(i) = i < 1 ? 0 : max(0, pad_corner[i][1] - pad_base_center(pad_corner[i][0]));
+function variant_corner(amp, lipc) = let(b = pad_corner) concat(
+    [[b[0][0], b[0][1], 0],
+     [b[1][0], b[1][1], sb(1)],
+     [(b[1][0] + b[2][0]) / 2, (b[1][1] + b[2][1]) / 2 - lipc, (sb(1) + sb(2)) / 2],
+     [b[2][0], b[2][1], sb(2)]],
+    [for (i = [3 : 6]) [b[i][0], b[i][1] + amp * sin(360 * (b[i][0] - b[2][0]) / (b[7][0] - b[2][0])), sb(i)]],
+    [[b[7][0], b[7][1], sb(7)]]);
+variants = [["A", 0, 0], ["B", 0.8, 0.5], ["C", 1.6, 1.0]];   // [label, amp, lipc]
+variant_pitch = 42;     // spacing between the pieces on the plate
+
 // Quick fit test: just the ledge and the curved pad (plus 6 mm of ramp above the ledge), same print orientation
 module padtest(c) intersection() {
     backplate(c);
@@ -313,3 +332,14 @@ if (PART == "cage8")        mirror([1, 0, 0]) cage(H8);
 if (PART == "cage13")       mirror([1, 0, 0]) cage(H13);
 if (PART == "preview8")     mirror([1, 0, 0]) assembly(H8);
 if (PART == "preview13")    mirror([1, 0, 0]) assembly(H13);
+// Three pad variants side by side on one plate (A = current profile, B = mild S + concave lip, C = stronger)
+if (PART == "padtest_set")
+    for (k = [0 : len(variants) - 1])
+        translate([0, k * variant_pitch, 0])
+            let($pc = variant_corner(variants[k][1], variants[k][2]))
+                rotate([-90, 0, 0]) mirror([1, 0, 0]) difference() {
+                    padtest(H8);
+                    // label engraved into the flat face that sits on the bed
+                    translate([(ix0 + x_open8) / 2, 0.01, ref_top - z_step - 12]) rotate([90, 0, 0])
+                        linear_extrude(height = 0.6) mirror([1, 0, 0]) text(variants[k][0], size = 9, halign = "center", valign = "center");
+                }
