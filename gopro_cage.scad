@@ -65,6 +65,7 @@ cord_notch_l = 5;    // notch depth into the wall from the open side
 // elastic hook: a small block on the front face at the open end, bottom corner, with a channel along X that is OPEN at the
 // bottom (drop the tie in from below)
 hook_x_len = 17.6;  hook_out = 7.6;  hook_h = 4;  hook_r = 1.5;  hook_chamfer = 1.5;   // hook height (its top is flush with the bottom of the lens window); hook_r rounds its edges
+rec_d = 1.5;        // depth of the hair-tie recess in the front face (the front wall is 2.5 mm)
 hook_flare = 1.2;   // the channel mouth at the bottom is flared by this much per side
 hook_eye_w = 2.5;  hook_eye_t = 3.4;   // channel height (open at the bottom, 1.5 mm roof left above it) and width
 module stadium_x(w, t, len) {   // stadium cross-section (w along Z, t along Y) extruded along +X
@@ -255,13 +256,16 @@ module cage(c) {
             // The end toward the closed wall is a 45-degree slope (like the original), so it prints without supports when the cage
             // stands on its closed wall; the end toward the open side is rounded (it narrows as it goes up, so that prints fine too).
             zb = lw_z0v - hook_h;  zt = lw_z0v;  yo = pd + front_t + hook_out;  yi = pd + front_t - 1.5;
+            x0h = xo - hook_x_len - 2;                        // left (closed-wall) end of the hook
             hull() {
-                for (hz = [zb + hook_r, zt - hook_r], hy = [yi, yo - hook_r]) {
-                    translate([xo - 2 - hook_r, hy, hz]) sphere(r = hook_r, $fn = 24);                              // rounded open end
-                    translate([xo - hook_x_len - 2 + hook_chamfer, hy, hz]) rotate([0, 90, 0]) cylinder(r = hook_r, h = 0.01, $fn = 24);   // full size
-                }
-                for (hz = [zb + hook_chamfer + 0.25, zt - hook_chamfer - 0.25], hy = [yi, yo - hook_chamfer - 0.25])
-                    translate([xo - hook_x_len - 2, hy, hz]) rotate([0, 90, 0]) cylinder(r = 0.25, h = 0.01, $fn = 12);   // shrunk start of the slope
+                // open-side end: rounded
+                for (hz = [zb + hook_r, zt - hook_r], hy = [yi, yo - hook_r])
+                    translate([xo - 2 - hook_r, hy, hz]) sphere(r = hook_r, $fn = 24);
+                // full-size section, reached after a 45-degree wedge (hook_out long), so the hook grows out of the wall without overhangs
+                for (hz = [zb + hook_r, zt - hook_r], hy = [yi, yo - hook_r])
+                    translate([x0h + hook_out, hy, hz]) rotate([0, 90, 0]) cylinder(r = hook_r, h = 0.01, $fn = 24);
+                // start of the wedge: flush with the front face, full height
+                translate([x0h, yi, zb]) cube([0.01, pd + front_t - yi + 0.01, hook_h]);
             }
         }
         // concave curve across the back of the pad
@@ -280,14 +284,17 @@ module cage(c) {
         // elastic cord hole through the back wall, with a notch around the opening on the open side
         translate([ox0 - 1, cord_y, lw_z0v]) stadium_x(cord_slot_w, cord_slot_t, xo - ox0 + 12);
         translate([xo - cord_notch_l, cord_y, lw_z0v]) stadium_x(cord_notch_w, cord_notch_t, cord_notch_l + 10);
-        // channel of the elastic hook, open at the bottom. It starts where the 45-degree slope of the hook ends (hook_chamfer in),
-        // so the first layers of the slope are solid: with the channel cut through them they were thin separate slivers (floating regions).
+        // channel of the elastic hook: its floor is the recess floor (rec_d into the front face), it runs out through the left end of
+        // the hook (no wall there) and is open at the bottom, flared on the outer side
         hull() {
-            translate([xo - hook_x_len - 2 + hook_chamfer, pd + front_t + hook_out / 2 - hook_eye_t / 2, lw_z0v - hook_h + 0.5])
-                cube([hook_x_len + 1 - hook_chamfer, hook_eye_t, hook_eye_w - 0.5]);
-            translate([xo - hook_x_len - 2 + hook_chamfer, pd + front_t + hook_out / 2 - hook_eye_t / 2 - hook_flare, lw_z0v - hook_h - 0.5])
-                cube([hook_x_len + 1 - hook_chamfer, hook_eye_t + 2 * hook_flare, 0.01]);
+            translate([xo - hook_x_len - 2 - 1, pd + front_t - rec_d, lw_z0v - hook_h + 0.5])
+                cube([hook_x_len + 2, hook_eye_t, hook_eye_w - 0.5]);
+            translate([xo - hook_x_len - 2 - 1, pd + front_t - rec_d, lw_z0v - hook_h - 0.5])
+                cube([hook_x_len + 2, hook_eye_t + 2 * hook_flare, 0.01]);
         }
+        // recess for the hair tie along the front face, from the closed (left) wall to the hook, so the tie lies nearly flush
+        translate([ox0 - 1, pd + front_t - rec_d, lw_z0v - hook_h - 0.5])
+            cube([(xo - hook_x_len - 2) - (ox0 - 1) + 1, rec_d + 2, hook_eye_w + 0.5]);
         // countersunk screw holes (head on the pocket side)
         for (sx = screw_xs) translate([sx, 0, 0]) {
             translate([0, -40, 0]) rotate([-90, 0, 0]) cylinder(d = screw_d, h = 41);
