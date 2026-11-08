@@ -8,7 +8,7 @@
 //   "padtest_set"  - three pad variants (A/B/C) on one plate, to compare fits in one print
 //   "padtest8"     - just the ledge + curved pad of the back plate (fastest fit test)
 //   "preview8" / "preview13" - cage + red dummy together (use a cross-section view to inspect)
-PART = "padtest_set";
+PART = "cage8";
 
 $fn = 48;
 
@@ -120,8 +120,11 @@ pad_corner = [[0, ramp_end_depth],   // foot of the ramp, at the top of the ledg
               [23.8, 36.4],
               [pad_h, pad_bot_corner]]; // bottom edge
 
-// $pc is the pad profile in use (default: pad_corner). The variant parts below override it.
-$pc = pad_corner;
+// $pc is the pad profile in use. The default is variant B from the fit test (it fitted best): a mild S-shape along the pad
+// (upper part bulges toward the helmet, lower part pulls back) and a slightly concave piece between the ledge and the curve.
+pad_S_amp       = 0.8;   // S-shape amplitude, mm
+pad_lip_concave = 0.5;   // how far the middle of the lip is pulled back, mm
+$pc = variant_corner(pad_S_amp, pad_lip_concave);
 
 function make_prof() = concat(
     [[45.85, 0],        // tip of the top tab, flush with the top face (45.85 from the front, measured)
@@ -317,7 +320,7 @@ function variant_corner(amp, lipc) = let(b = pad_corner) concat(
      [b[2][0], b[2][1], sb(2)]],
     [for (i = [3 : 6]) [b[i][0], b[i][1] + amp * sin(360 * (b[i][0] - b[2][0]) / (b[7][0] - b[2][0])), sb(i)]],
     [[b[7][0], b[7][1], sb(7)]]);
-variants = [["A", 0, 0], ["B", 0.8, 0.5], ["C", 1.6, 1.0]];   // [label, amp, lipc]
+variants = [["A", 0, 0], ["B", pad_S_amp, pad_lip_concave], ["C", 1.6, 1.0]];   // [label, amp, lipc]
 variant_pitch = 42;     // spacing between the pieces on the plate
 
 // Quick fit test: just the ledge and the curved pad (plus 6 mm of ramp above the ledge), same print orientation
