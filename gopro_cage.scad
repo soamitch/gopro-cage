@@ -280,12 +280,13 @@ module cage(c) {
         // elastic cord hole through the back wall, with a notch around the opening on the open side
         translate([ox0 - 1, cord_y, lw_z0v]) stadium_x(cord_slot_w, cord_slot_t, xo - ox0 + 12);
         translate([xo - cord_notch_l, cord_y, lw_z0v]) stadium_x(cord_notch_w, cord_notch_t, cord_notch_l + 10);
-        // channel of the elastic hook, open at the bottom
+        // channel of the elastic hook, open at the bottom. It starts where the 45-degree slope of the hook ends (hook_chamfer in),
+        // so the first layers of the slope are solid: with the channel cut through them they were thin separate slivers (floating regions).
         hull() {
-            translate([xo - hook_x_len - 2 - 1, pd + front_t + hook_out / 2 - hook_eye_t / 2, lw_z0v - hook_h + 0.5])
-                cube([hook_x_len + 2, hook_eye_t, hook_eye_w - 0.5]);
-            translate([xo - hook_x_len - 2 - 1, pd + front_t + hook_out / 2 - hook_eye_t / 2 - hook_flare, lw_z0v - hook_h - 0.5])
-                cube([hook_x_len + 2, hook_eye_t + 2 * hook_flare, 0.01]);
+            translate([xo - hook_x_len - 2 + hook_chamfer, pd + front_t + hook_out / 2 - hook_eye_t / 2, lw_z0v - hook_h + 0.5])
+                cube([hook_x_len + 1 - hook_chamfer, hook_eye_t, hook_eye_w - 0.5]);
+            translate([xo - hook_x_len - 2 + hook_chamfer, pd + front_t + hook_out / 2 - hook_eye_t / 2 - hook_flare, lw_z0v - hook_h - 0.5])
+                cube([hook_x_len + 1 - hook_chamfer, hook_eye_t + 2 * hook_flare, 0.01]);
         }
         // countersunk screw holes (head on the pocket side)
         for (sx = screw_xs) translate([sx, 0, 0]) {
