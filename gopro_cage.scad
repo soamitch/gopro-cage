@@ -237,7 +237,7 @@ module interface(c) {
     // at the corner depth of the curve, so the back plate is as wide as the cage; the curve itself stays where it is)
     ixe = min(ix0, cx0(c) - clear - wall_l);
     translate([ixe, 0, 0]) rotate([90, 0, 90])
-        linear_extrude(height = x_open8 - ixe) polygon(pts);
+        linear_extrude(height = min(x_open8, cx1(c) - overhang) - ixe) polygon(pts);   // ends flush with the open side of the cage
 }
 
 module cage(c) {
@@ -268,7 +268,7 @@ module cage(c) {
                     }
                     interface(c);
                 }
-                envelope(min(ox0, ix0), max(xo, x_open8) + 10, oz0, oz1, pd + front_t);
+                envelope(min(ox0, ix0), xo + 10, oz0, oz1, pd + front_t);
             }
             // elastic hook: block on the front face near the open end (eye is cut below)
             // (top flush with the bottom of the lens window, all outer edges rounded)
