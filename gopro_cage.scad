@@ -8,7 +8,7 @@
 //   "padtest_set"  - three pad variants (A/B/C) on one plate, to compare fits in one print
 //   "padtest8"     - just the ledge + curved pad of the back plate (fastest fit test)
 //   "preview8" / "preview13" - cage + red dummy together (use a cross-section view to inspect)
-PART = "cage8";
+PART = "cage13";
 
 $fn = 48;
 
@@ -154,6 +154,17 @@ module rbox(w, h, d, r) {      // rounded box: x 0..w, z 0..h, y 0..d
         translate([x, 0, z]) rotate([-90, 0, 0]) cylinder(r = r, h = d);
 }
 
+// Envelope that rounds the outside of the cage: corner_r on the four corners seen from the front (through the whole depth, so the
+// back pad gets the same corners) and edge_r on the edges around the front face. The open side is cut flat and stays square.
+edge_r = 1.5;  corner_r = 3;
+module envelope(x0, x1, z0, z1, yf) {
+    hull() for (x = [x0 + corner_r, x1 - corner_r], z = [z0 + corner_r, z1 - corner_r])
+        translate([x, 0, z]) rotate([-90, 0, 0]) {
+            translate([0, 0, -100]) cylinder(r = corner_r, h = 100 + yf - edge_r);
+            translate([0, 0, yf - edge_r]) rotate_extrude($fn = 32) translate([corner_r - edge_r, 0]) circle(r = edge_r, $fn = 16);
+        }
+}
+
 module dbody(w, h, d, r, f) {   // rounded box with a chamfered back edge
     hull() {
         translate([f, 0, f]) rbox(w - 2*f, h - 2*f, 0.01, max(r - f, 0.5));
@@ -245,12 +256,17 @@ module cage(c) {
 
     difference() {
         union() {
-            // shell, flat-cut at the open side
+            // shell (flat-cut at the open side) and back interface, with rounded corners and front edges
             intersection() {
-                translate([ox0, -back_t, oz0]) rbox(xo - ox0 + 10, oz1 - oz0, od, 3);
-                translate([ox0 - 1, -back_t - 1, oz0 - 1]) cube([xo - ox0 + 1, od + 2, oz1 - oz0 + 2]);
+                union() {
+                    intersection() {
+                        translate([ox0, -back_t, oz0]) rbox(xo - ox0 + 10, oz1 - oz0, od, corner_r);
+                        translate([ox0 - 1, -back_t - 1, oz0 - 1]) cube([xo - ox0 + 1, od + 2, oz1 - oz0 + 2]);
+                    }
+                    interface();
+                }
+                envelope(min(ox0, ix0), max(xo, x_open8) + 10, oz0, oz1, pd + front_t);
             }
-            interface();
             // elastic hook: block on the front face near the open end (eye is cut below)
             // (top flush with the bottom of the lens window, all outer edges rounded)
             // The end toward the closed wall is a 45-degree slope (like the original), so it prints without supports when the cage
