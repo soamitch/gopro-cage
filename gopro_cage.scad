@@ -115,7 +115,7 @@ pad_bot_center = 31.0;   // bottom of the pad, in the middle
 // BACK PANEL (the screw panel): a ramp from the thinnest point (4 mm behind the pocket floor) down to 7.4 mm behind it
 tri_h        = 10;     // height of the triangular tab at the top (tip to where its underside meets the panel)
 thin_t       = 4;      // back wall thickness at the thinnest point
-panel_gap_fix = 1.4;   // fit on the helmet wedge: with the screws tight the bottom of the panel stood off the wedge by 1.4-1.7 mm,
+panel_gap_fix = 0;     // REVERTED (1.4 made the screws stop lining up). Was: bottom of the panel stood 1.4-1.7 mm off the wedge,
                        // so the ramp gets steeper (this much thicker at its bottom, ~1.55 mm more at the ledge)
 panel_t      = 7.4 + panel_gap_fix;    // back wall thickness at the bottom of the ramp (7.4 measured on the original)
 panel_base   = 18.5;   // vertical length of the ramp
@@ -142,7 +142,7 @@ $pc = variant_corner(pad_S_amp, pad_lip_concave);
 
 tab_tip = [45.85, 0];   // tip of the top tab, flush with the top face (45.85 from the front, measured)
 tab_tip_r = 1.0;        // the tip is rounded with this radius (no sharp point)
-tab_drop = 2.0;         // the tab's underside is lowered this much (the tab stood 1.8-2.2 mm off the wedge's top with the screws tight)
+tab_drop = 0;           // REVERTED (was 2.0): the tab's underside is lowered this much (the tab stood 1.8-2.2 mm off the wedge's top with the screws tight)
 // rounds the corner p (between neighbours pa and pb) with radius r; returns the arc as points (2D)
 function fillet(p, pa, pb, r, n = 6) = let(
         a = (pa - p) / norm(pa - p), b = (pb - p) / norm(pb - p),
