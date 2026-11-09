@@ -432,7 +432,7 @@ w_nut_af = 7.3;  w_nut_t = 3.6;   // M4 nut pocket (7 mm across flats + clearanc
 // helmet bolts: 3.5 mm holes, ~3 mm from the side and back edges to the hole edge (measured)
 w_bolt_d = 3.5;
 w_washer_d = 8;             // flat washer seats around the two rear holes (measured)
-w_washer_h = 1;             // seat stands this far above the highest point of the plate around it (GUESS)
+w_washer_h = 0.5;           // level seat top stands this far above the plate at the seat's high side (measured)
 // helmet hole pattern (measured on the helmet, edge to edge minus one hole): a trapezoid, wider at the back
 w_bolt_dx_f = 63 - 3.5;     // front pair, centre to centre (59.5)
 w_bolt_dx_b = 69.5 - 3.5;   // back pair, centre to centre (66)
@@ -499,7 +499,7 @@ module wedge() {
                     translate([-w_block_w / 2, -0.5, w_toe_lift]) cube([w_block_w, 0.5, w_toe_t + (w_toe_lift + w_toe_t) * 0]);
                     translate([-w_block_w / 2, w_fy(w_toe_lift + w_toe_t) - 0.5, w_toe_lift]) cube([w_block_w, 0.5, w_toe_t]);
                 }
-            // flat washer seats on the rear holes: top is level with the highest point of the plate around the seat
+            // flat, level washer seats on the rear holes: top is w_washer_h above the highest point of the plate around the seat
             for (sx = [-1, 1]) let(hx = sx * w_bolt_dx_b / 2,
                     ztop = max([for (a = [0 : 30 : 330]) dome(hx + w_washer_d / 2 * cos(a), yb_b + w_washer_d / 2 * sin(a))]) + w_plate_t + w_washer_h)
                 translate([hx, yb_b, dome(hx, yb_b) - 5]) cylinder(d = w_washer_d, h = ztop - dome(hx, yb_b) + 5, $fn = 32);
@@ -517,7 +517,7 @@ module wedge() {
                 rotate([90, 0, 90]) linear_extrude(height = len) polygon(slot);
         // helmet bolt holes
         for (p = [[-sx0, yf_b], [sx0, yf_b], [-w_bolt_dx_b / 2, yb_b], [w_bolt_dx_b / 2, yb_b]])
-            translate([p[0], p[1], -1]) cylinder(d = w_bolt_d, h = 30, $fn = 24);
+            translate([p[0], p[1], -30]) cylinder(d = w_bolt_d, h = 60, $fn = 24);
         // cage screw channels + nut pockets (nut inserted from the helmet side)
         for (sx = [-1, 1]) translate([sx * w_screw_dx / 2, 0, 0]) {
             translate(s0 - 2 * dir) rotate([-(90 - w_screw_up), 0, 0]) rotate([180, 0, 0]) cylinder(d = w_screw_d, h = 2 + w_screw_len - w_cage_wall + 1.5, $fn = 24);
@@ -534,7 +534,10 @@ if (PART == "wedge_plate")
     let(yc = w_fy(w_slot_z) - w_bolt_front - w_bolt_dy / 2)
         intersection() {
             wedge();
-            heightfield(-50, 50, -w_plate_l - 10, 10, function(x, y) -30, function(x, y) w_dome(x, y, yc) + w_plate_t + 0.01);
+            union() {
+                heightfield(-50, 50, -w_plate_l - 10, 10, function(x, y) -30, function(x, y) w_dome(x, y, yc) + w_plate_t + 0.01);
+                for (sx = [-1, 1]) translate([sx * w_bolt_dx_b / 2, yc - w_bolt_dy / 2, -30]) cylinder(d = w_washer_d + 2, h = 60);   // keep the seats
+            }
         }
 if (PART == "backplate8")   rotate([-90, 0, 0]) mirror([1, 0, 0]) backplate(H8);
 // ---------- Pad variants, for printing several fit tests at once ----------
