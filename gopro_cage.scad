@@ -428,7 +428,9 @@ w_screw_up = 30;            // screw axis angle above the plate (measured)
 w_screw_d  = 4.4;           // channel diameter (M4 clearance)
 w_screw_len = 20;           // screw length (measured 20.07)
 w_cage_wall = 4.55;         // cage back wall the screw passes through first (from the cage model)
-w_nut_af = 7.3;  w_nut_t = 3.6;   // M4 nut pocket (7 mm across flats + clearance), opened from the helmet side
+w_nut_af = 7.3;  w_nut_t = 5.2;   // pocket for an M4 nyloc nut (7 across flats, ~5 tall, + clearance), pushed in from the helmet side,
+                                  // nylon ring away from the cage
+w_nut_past = 0.6;                 // screw tip sticks out this far past the nut's nylon (so it locks)
 // helmet bolts: 3.5 mm holes, ~3 mm from the side and back edges to the hole edge (measured)
 w_bolt_d = 3.5;
 w_washer_d = 8;             // flat washer seats around the two rear holes (measured)
@@ -451,8 +453,7 @@ w_dome_rx = 140;  w_dome_ry = 105;  w_dome_h = 6;
 // its underside is lifted w_toe_lift so it clears the ridge at the front of the helmet's recess (contour trace: ~2.5)
 w_toe_reach = 12.5;  w_toe_lift = 2.5;
 w_toe_top = 5;      // top of the toe above the table at the centre (measured); the toe follows the dome's curve
-w_toe_flat = 4;     // flat part of the toe's top before the short slope up to the front wall (measured)
-w_toe_slope = 45;   // that slope (GUESS; could later be matched to the cage's back surface)
+
 // (not clipped: the curve keeps going down past the holes to the plate edges, like the original)
 function w_dome(x, y, yc) = w_dome_h - x * x / (2 * w_dome_rx) - (y - yc) * (y - yc) / (2 * w_dome_ry);
 // solid between two height functions lo(x, y) and hi(x, y) over a rectangle
@@ -486,7 +487,7 @@ module wedge() {
     quad = [[-sx0, yf_b], [sx0, yf_b], [w_bolt_dx_b / 2 - kx * e, yb_b + e], [-w_bolt_dx_b / 2 + kx * e, yb_b + e]];
     s0 = [0, w_fy(w_screw_z), w_screw_z];            // screw channel start on the front face (y, z)
     dir = [0, -cos(w_screw_up), -sin(w_screw_up)];   // into the wedge
-    nut_s = w_screw_len - w_cage_wall - w_nut_t / 2 - 0.8;   // nut centre along the screw, from the front face
+    nut_s = w_screw_len - w_cage_wall - w_nut_t / 2 - w_nut_past;   // nut centre along the screw, from the front face
     yc = (yf_b + yb_b) / 2;                          // dome centre: middle of the hole pattern
     dome = function(x, y) w_dome(x, y, yc);
     module outline() hull() {
@@ -497,12 +498,12 @@ module wedge() {
         union() {
             rotate([90, 0, 90]) linear_extrude(height = w_block_w, center = true) polygon(prof);
             // front toe over the helmet's front ridge: follows the dome, underside lifted w_toe_lift, top w_toe_top above the table
-            // at the centre; flat for w_toe_flat from its front edge, then a short slope up into the front wall
-            let(yt0 = yf_b + w_toe_reach, c0 = dome(0, yt0), yk = yt0 - w_toe_flat)
+            // at the centre; its flat top runs back until it meets the (flat, full-height) front wall
+            let(yt0 = yf_b + w_toe_reach, c0 = dome(0, yt0))
                 intersection() {
                     translate([-w_block_w / 2, -10, -30]) cube([w_block_w, yt0 + 10, 60]);
                     heightfield(-w_block_w / 2 - 1, w_block_w / 2 + 1, -10, yt0, function(x, y) dome(x, y) - c0 + w_toe_lift + c0,
-                        function(x, y) dome(x, y) - c0 + w_toe_top + max(0, yk - y) * tan(w_toe_slope), 30);
+                        function(x, y) dome(x, y) - c0 + w_toe_top, 30);
                 }
             // flat, level washer seats on the rear holes: top is w_washer_h above the highest point of the plate around the seat
             for (sx = [-1, 1]) let(hx = sx * w_bolt_dx_b / 2,
