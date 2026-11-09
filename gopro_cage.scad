@@ -8,7 +8,8 @@
 //   "padtest_set"  - three pad variants (A/B/C) on one plate, to compare fits in one print
 //   "padtest8"     - just the ledge + curved pad of the back plate (fastest fit test)
 //   "preview8" / "preview13" - cage + red dummy together (use a cross-section view to inspect)
-PART = "padtest8";
+//   "wedge"        - the helmet wedge (piece between the helmet and the cage), helmet side down
+PART = "wedge";
 
 $fn = 48;
 
@@ -358,6 +359,67 @@ module flipx(w) { translate([w, 0, 0]) mirror([1, 0, 0]) children(); }
 
 // Back plate only (everything behind the pocket floor), printed face down: quick test of the screws, ramp and pad curve
 module backplate(c) intersection() { cage(c); translate([-200, -200, -200]) cube([400, 200, 400]); }
+
+// ================= HELMET WEDGE (the piece between the helmet and the cage) =================
+// Frame: x across (centred), y forward (+ = toward the cage), z up (z = 0 is the helmet side). The front-bottom edge is y = 0.
+// Printed as is: helmet side on the bed.
+w_plate_w = 73;    w_plate_l = 61;   w_plate_t = 4.4;   w_plate_r = 3;   // base plate (measured w / l / thickness; corner radius guessed)
+w_block_w = 69.7;           // width of the raised front part (measured)
+w_h       = 22.3;           // height at the front (measured 22.2-22.3)
+w_lean    = 20;             // front wall leans back from vertical (measured: 110 deg to the table)
+w_top_l   = 12;             // flat top behind the front edge (GUESS: your trace suggests ~7, but then the nuts would break through the slope)
+w_back    = 52;             // back slope angle down to the plate (from your side trace, ~50)
+// cage screws: two channels 38.5 apart (centred), perpendicular to the cage, i.e. 30 deg above the plate (measured)
+w_screw_dx = screw_dx;      // 38.54 (matches your 38.5)
+w_screw_z  = 20.4;          // channel centre on the front face above the plate (measured 20 / 20.8)
+w_screw_up = 30;            // screw axis angle above the plate (measured)
+w_screw_d  = 4.4;           // channel diameter (M4 clearance)
+w_screw_len = 20;           // screw length (measured 20.07)
+w_cage_wall = 4.55;         // cage back wall the screw passes through first (from the cage model)
+w_nut_af = 7.3;  w_nut_t = 3.6;   // M4 nut pocket (7 mm across flats + clearance), opened from the helmet side
+// helmet bolts: 3.5 mm holes, ~3 mm from the side and back edges to the hole edge (measured)
+w_bolt_d = 3.5;
+w_bolt_side = 3 + 3.5 / 2;  // side edge to hole centre
+w_bolt_back = 3 + 3.5 / 2;  // back edge to hole centre
+w_bolt_front = 4;           // front of the side slot to the front hole centre (measured)
+// side slots over the two front bolts: open to the side, floor 7.2 above the plate, 7.8 deep at the floor, closing to a point at the top
+w_slot_z = 7.2;  w_slot_d = 7.8;  w_slot_w = 7;
+
+function w_fy(z) = -z * tan(w_lean);     // front face y at height z
+module wedge() {
+    yt = w_fy(w_h);                                  // top of the front wall
+    yb = yt - w_top_l - (w_h - w_plate_t) / tan(w_back);
+    prof = [[0, 0], [yt, w_h], [yt - w_top_l, w_h], [yb, w_plate_t], [-w_plate_l, w_plate_t], [-w_plate_l, 0]];
+    yf = w_fy(w_slot_z);                             // front of the slot (on the front face, at the slot floor)
+    slot = [[yf + 0.01, w_slot_z], [yf - w_slot_d, w_slot_z], [yt - 0.3, w_h + 0.01], [yt + 1, w_h + 1], [yf + 1, w_slot_z]];
+    sx0 = w_plate_w / 2 - w_bolt_side;               // bolt x (each side)
+    s0 = [0, w_fy(w_screw_z), w_screw_z];            // screw channel start on the front face (y, z)
+    dir = [0, -cos(w_screw_up), -sin(w_screw_up)];   // into the wedge
+    nut_s = w_screw_len - w_cage_wall - w_nut_t / 2 - 0.8;   // nut centre along the screw, from the front face
+    difference() {
+        union() {
+            rotate([90, 0, 90]) linear_extrude(height = w_block_w, center = true) polygon(prof);
+            translate([0, -w_plate_l / 2, 0]) linear_extrude(height = w_plate_t)
+                offset(r = w_plate_r) square([w_plate_w - 2 * w_plate_r, w_plate_l - 2 * w_plate_r], center = true);
+        }
+        // side slots (open to the side), one over each front bolt
+        for (sx = [-1, 1]) let(x_in = sx0 - w_slot_w / 2, len = w_plate_w / 2 + 1 - x_in)
+            translate([sx > 0 ? x_in : -x_in - len, 0, 0])
+                rotate([90, 0, 90]) linear_extrude(height = len) polygon(slot);
+        // helmet bolt holes
+        for (sx = [-1, 1], y = [w_fy(w_slot_z) - w_bolt_front, -w_plate_l + w_bolt_back])
+            translate([sx * sx0, y, -1]) cylinder(d = w_bolt_d, h = 30, $fn = 24);
+        // cage screw channels + nut pockets (nut inserted from the helmet side)
+        for (sx = [-1, 1]) translate([sx * w_screw_dx / 2, 0, 0]) {
+            translate(s0 - 2 * dir) rotate([-(90 - w_screw_up), 0, 0]) rotate([180, 0, 0]) cylinder(d = w_screw_d, h = 2 + w_screw_len - w_cage_wall + 1.5, $fn = 24);
+            hull() for (dz = [0, -30])
+                translate(s0 + nut_s * dir + [0, 0, dz]) rotate([90 + w_screw_up, 0, 0])
+                    cylinder(d = w_nut_af / cos(30), h = w_nut_t, center = true, $fn = 6);
+        }
+    }
+}
+
+if (PART == "wedge")        wedge();
 if (PART == "backplate8")   rotate([-90, 0, 0]) mirror([1, 0, 0]) backplate(H8);
 // ---------- Pad variants, for printing several fit tests at once ----------
 // amp  = S-shape along the pad: the upper part bulges toward the helmet by amp mm, the lower part pulls back by amp mm
