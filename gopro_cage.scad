@@ -115,7 +115,9 @@ pad_bot_center = 31.0;   // bottom of the pad, in the middle
 // BACK PANEL (the screw panel): a ramp from the thinnest point (4 mm behind the pocket floor) down to 7.4 mm behind it
 tri_h        = 10;     // height of the triangular tab at the top (tip to where its underside meets the panel)
 thin_t       = 4;      // back wall thickness at the thinnest point
-panel_t      = 7.4;    // back wall thickness at the bottom of the ramp
+panel_gap_fix = 1.4;   // fit on the helmet wedge: with the screws tight the bottom of the panel stood off the wedge by 1.4-1.7 mm,
+                       // so the ramp gets steeper (this much thicker at its bottom, ~1.55 mm more at the ledge)
+panel_t      = 7.4 + panel_gap_fix;    // back wall thickness at the bottom of the ramp (7.4 measured on the original)
 panel_base   = 18.5;   // vertical length of the ramp
 pad_lip_h  = 4;       // height of the piece between the ledge's outer corner and the thickest point of the curve
 pad_ledge_h = 1.0;    // the ledge itself drops this much as it runs back (measured: 7.5 -> 11.5 mm thick in about 1 mm)
@@ -140,19 +142,29 @@ $pc = variant_corner(pad_S_amp, pad_lip_concave);
 
 tab_tip = [45.85, 0];   // tip of the top tab, flush with the top face (45.85 from the front, measured)
 tab_tip_r = 1.0;        // the tip is rounded with this radius (no sharp point)
-// rounded tip: arc between the top face (toward the front) and the tab's underside, as [depth, height below top] points
-function tab_tip_pts() = let(
-        p = tab_tip, q = [pad_floor_depth + thin_t, tri_h],
-        a = [-1, 0], b = (q - p) / norm(q - p),
+tab_drop = 2.0;         // the tab's underside is lowered this much (the tab stood 1.8-2.2 mm off the wedge's top with the screws tight)
+// rounds the corner p (between neighbours pa and pb) with radius r; returns the arc as points (2D)
+function fillet(p, pa, pb, r, n = 6) = let(
+        a = (pa - p) / norm(pa - p), b = (pb - p) / norm(pb - p),
         th = acos(a * b), m = (a + b) / norm(a + b),
-        c = p + m * tab_tip_r / sin(th / 2),
-        ta = p + a * tab_tip_r / tan(th / 2), tb = p + b * tab_tip_r / tan(th / 2),
+        c = p + m * r / sin(th / 2),
+        ta = p + a * r / tan(th / 2), tb = p + b * r / tan(th / 2),
         a0 = atan2(ta[1] - c[1], ta[0] - c[0]), a1 = atan2(tb[1] - c[1], tb[0] - c[0]),
         da = a1 - a0 > 180 ? a1 - a0 - 360 : a1 - a0 < -180 ? a1 - a0 + 360 : a1 - a0)
-    [for (k = [0 : 8]) c + tab_tip_r * [cos(a0 + da * k / 8), sin(a0 + da * k / 8)]];
+    [for (k = [0 : n]) c + r * [cos(a0 + da * k / n), sin(a0 + da * k / n)]];
+// where the (lowered) underside of the tab meets the screw panel ramp
+function tab_junction() = let(
+        T = [pad_floor_depth + thin_t, tri_h], F = [ramp_end_depth, z_step],
+        P = tab_tip + [0, tab_drop], u = T - tab_tip, v = F - T,
+        det = u[0] * (-v[1]) - u[1] * (-v[0]),
+        t = ((T - P)[0] * (-v[1]) - (T - P)[1] * (-v[0])) / det)
+    P + t * u;
+// tab outline, [depth, height below top]: top-back corner and lower-back corner rounded, then down the underside to the panel
+function tab_pts() = let(J = tab_junction(), P0 = tab_tip, P1 = tab_tip + [0, tab_drop])
+    tab_drop < 0.05 ? concat(fillet(P0, [0, 0], J, tab_tip_r, 8), [J])
+                    : concat(fillet(P0, [0, 0], P1, tab_tip_r), fillet(P1, P0, J, tab_tip_r), [J]);
 function make_prof() = concat(
-    tab_tip_pts(),
-    [[pad_floor_depth + thin_t, tri_h]],   // underside of the tab meets the screw panel = thinnest point
+    tab_pts(),                             // tab, ending where its underside meets the screw panel
     [for (q = $pc) [q[1], z_step + q[0]]]);
 
 // ---------- Derived: where the lens sits (fixed relative to the helmet) ----------
