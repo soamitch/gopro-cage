@@ -93,6 +93,7 @@ screw_dx       = cage_w8 - 2 * screw_edge;            // centre-to-centre spacin
 screw_xs       = [13 - screw_edge, 13 - cage_w8 + screw_edge];   // x of the two screw axes
 csk_d          = 8.7;     // countersink diameter on the pocket side
 csk_h          = (csk_d - screw_d) / 2;   // 90 degree countersink
+csk_extra      = 0.5;     // the whole countersink sits this much deeper, so the heads end up below the pocket floor
 screw_from_top = 13;      // screw axis is this far below the top face of the cage
 floor_to_screw = 2 * clear + H8[1] + top_t - screw_from_top;   // screw axis height above the Hero 8 pocket floor (derived)
 open_to_screw  = 13;      // frame origin to the open side (fixed reference; do not change, the cage is built around it)
@@ -379,8 +380,8 @@ module cage(c) {
         // countersunk screw holes (head on the pocket side)
         for (sx = screw_xs) translate([sx, 0, 0]) {
             translate([0, -40, 0]) rotate([-90, 0, 0]) cylinder(d = screw_d, h = 41);
-            translate([0, -csk_h, 0]) rotate([-90, 0, 0]) cylinder(d1 = screw_d, d2 = csk_d, h = csk_h + 0.01);
-            rotate([-90, 0, 0]) cylinder(d = csk_d, h = 2);
+            translate([0, -csk_h - csk_extra, 0]) rotate([-90, 0, 0]) cylinder(d1 = screw_d, d2 = csk_d, h = csk_h + 0.01);
+            translate([0, -csk_extra - 0.01, 0]) rotate([-90, 0, 0]) cylinder(d = csk_d, h = csk_extra + 2.01);
         }
     }
 }
