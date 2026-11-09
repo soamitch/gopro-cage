@@ -142,9 +142,18 @@ lens_cz_ref = z_top8 - H8[4] / 2;                    // lens centre z, held fixe
 ref_front_to_floor = front_t + (H8[2] - H8[5]) + clear_y;   // outside front face to pocket floor
 ref_top    = z_top8 + clear + top_t;                          // outer top
 ref_bottom = -floor_to_screw - bottom_t;                      // outer bottom
-ix0        = cx0(H8) - clear - wall_l;                        // outer closed (left) edge
+ix0        = cx1b(H8) - H8[0] - clear - wall_l;               // outer closed (left) edge of the Hero 8 cage
 
-function cx1(c) = lens_cx_ref + (c[0] - c[6]);   // camera right edge
+// Where the camera sits along the mount (X). With center_on_mount the cage is centred on the helmet piece (the Hero 8 cage
+// footprint); a wider camera then overhangs equally on both sides and its lens moves a little (Hero 13: about 5 mm toward
+// the open side). Set it to false to hold every camera's lens exactly where the Hero 8's is. cam_shift_extra nudges it further.
+center_on_mount = true;
+cam_shift_extra = 0;
+function cx1b(c) = lens_cx_ref + (c[0] - c[6]);   // camera right edge with the lens held at the Hero 8 position
+function cam_shift(c) = (center_on_mount
+        ? (ix0 + x_open8) / 2 - ((cx1b(c) - c[0] - clear - wall_l) + (cx1b(c) - overhang)) / 2
+        : 0) + cam_shift_extra;
+function cx1(c) = cx1b(c) + cam_shift(c);         // camera right edge
 function cx0(c) = cx1(c) - c[0];                 // camera left edge
 function cz1(c) = lens_cz_ref + c[4] / 2;        // camera top (lens flush with the top)
 function cz0(c) = cz1(c) - c[1];                 // camera bottom
@@ -235,9 +244,9 @@ module interface(c) {
     );
     // runs from the open side to the closed wall of THIS cage (for a wider camera the plate continues past the Hero 8 footprint
     // at the corner depth of the curve, so the back plate is as wide as the cage; the curve itself stays where it is)
-    ixe = min(ix0, cx0(c) - clear - wall_l);
+    ixe = cx0(c) - clear - wall_l;               // closed side of THIS cage
     translate([ixe, 0, 0]) rotate([90, 0, 90])
-        linear_extrude(height = min(x_open8, cx1(c) - overhang) - ixe) polygon(pts);   // ends flush with the open side of the cage
+        linear_extrude(height = (cx1(c) - overhang) - ixe) polygon(pts);   // ends flush with the open side of the cage
 }
 
 module cage(c) {
@@ -254,7 +263,7 @@ module cage(c) {
     od  = back_t + pd + front_t;
     bx0 = cx0(c) + btn_from_closed - wall_l - clear;   // button window, near edge (x)
     by0 = pd + front_t - btn_from_front - btn_d;       // button window, back edge (y)
-    lw_x0 = lens_cx_ref - ls/2 - lens_clear;
+    lw_x0 = lens_cx_ref + cam_shift(c) - ls/2 - lens_clear;
     lw_z0v = cz1(c) - ls - lens_clear;
 
     difference() {
@@ -268,7 +277,7 @@ module cage(c) {
                     }
                     interface(c);
                 }
-                envelope(min(ox0, ix0), xo + 10, oz0, oz1, pd + front_t);
+                envelope(ox0, xo + 10, oz0, oz1, pd + front_t);
             }
             // elastic hook: block on the front face near the open end (eye is cut below)
             // (top flush with the bottom of the lens window, all outer edges rounded)
