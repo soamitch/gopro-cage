@@ -137,9 +137,21 @@ pad_S_amp       = 0.8;   // S-shape amplitude, mm
 pad_lip_concave = 0.5;   // how far the middle of the lip is pulled back, mm
 $pc = variant_corner(pad_S_amp, pad_lip_concave);
 
+tab_tip = [45.85, 0];   // tip of the top tab, flush with the top face (45.85 from the front, measured)
+tab_tip_r = 1.0;        // the tip is rounded with this radius (no sharp point)
+// rounded tip: arc between the top face (toward the front) and the tab's underside, as [depth, height below top] points
+function tab_tip_pts() = let(
+        p = tab_tip, q = [pad_floor_depth + thin_t, tri_h],
+        a = [-1, 0], b = (q - p) / norm(q - p),
+        th = acos(a * b), m = (a + b) / norm(a + b),
+        c = p + m * tab_tip_r / sin(th / 2),
+        ta = p + a * tab_tip_r / tan(th / 2), tb = p + b * tab_tip_r / tan(th / 2),
+        a0 = atan2(ta[1] - c[1], ta[0] - c[0]), a1 = atan2(tb[1] - c[1], tb[0] - c[0]),
+        da = a1 - a0 > 180 ? a1 - a0 - 360 : a1 - a0 < -180 ? a1 - a0 + 360 : a1 - a0)
+    [for (k = [0 : 8]) c + tab_tip_r * [cos(a0 + da * k / 8), sin(a0 + da * k / 8)]];
 function make_prof() = concat(
-    [[45.85, 0],        // tip of the top tab, flush with the top face (45.85 from the front, measured)
-     [pad_floor_depth + thin_t, tri_h]],   // underside of the tab meets the screw panel = thinnest point
+    tab_tip_pts(),
+    [[pad_floor_depth + thin_t, tri_h]],   // underside of the tab meets the screw panel = thinnest point
     [for (q = $pc) [q[1], z_step + q[0]]]);
 
 // ---------- Derived: where the lens sits (fixed relative to the helmet) ----------
@@ -174,8 +186,9 @@ module rbox(w, h, d, r) {      // rounded box: x 0..w, z 0..h, y 0..d
 }
 
 // Envelope that rounds the outside of the cage: corner_r on the four corners seen from the front (through the whole depth, so the
-// back pad gets the same corners) and edge_r on the edges around the front face. The open side is cut flat and stays square.
+// back pad gets the same corners) and edge_r on the edges around the front face. The open side gets the same rounding.
 edge_r = 1.5;  corner_r = 3;
+mouth_ch = 0.8;   // chamfer around the camera opening on the open side
 module envelope(x0, x1, z0, z1, yf) {
     hull() for (x = [x0 + corner_r, x1 - corner_r], z = [z0 + corner_r, z1 - corner_r])
         translate([x, 0, z]) rotate([-90, 0, 0]) {
@@ -296,7 +309,7 @@ module cage(c) {
                     }
                     interface(c);
                 }
-                envelope(ox0, xo + 10, oz0, oz1, pd + front_t);
+                envelope(ox0, xo, oz0, oz1, pd + front_t);   // ends at the open side, so its edges are rounded too
             }
             // elastic hook: block on the front face near the open end (eye is cut below)
             // (top flush with the bottom of the lens window, all outer edges rounded)
@@ -322,6 +335,11 @@ module cage(c) {
         }
         // camera pocket (open to the right)
         translate([px0, 0, pz0]) rbox(xo + 10 - px0, pz1 - pz0, pd, c[3] + clear);
+        // eased (chamfered) mouth of the pocket on the open side
+        hull() {
+            translate([xo - mouth_ch, 0, pz0]) cube([0.01, pd, pz1 - pz0]);
+            translate([xo + 0.01, -mouth_ch, pz0 - mouth_ch]) cube([0.01, pd + 2 * mouth_ch, pz1 - pz0 + 2 * mouth_ch]);
+        }
         // shutter button: window through the top wall + channel in the ceiling out to the open side
         translate([bx0, by0, pz1 - 0.01]) cube([btn_w, btn_d, top_t + 1]);
         translate([bx0, by0, pz1 - 0.01]) cube([xo + 10 - bx0, btn_d, btn_h + 0.01]);
