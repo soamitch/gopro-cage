@@ -68,10 +68,12 @@ cord_wall = 0.8;     // minimum plastic kept between the hole and the pad surfac
 // bottom (drop the tie in from below)
 hook_x_len = 17.6;  hook_out = 7.6;  hook_h = 4;  hook_r = 1.5;  hook_chamfer = 1.5;   // hook height (its top is flush with the bottom of the lens window); hook_r rounds its edges
 rec_d = 1.5;        // depth of the hair-tie recess in the front face (the front wall is 2.5 mm)
-// engraving on the front face, below the hair-tie recess
-engrave_lines = ["Mitch Henrie", "Skydive Kapowsin"];
-engrave_size  = 3.5;    // letter size
-engrave_pitch = 4.8;    // line spacing
+// engraving: front face (below the hair-tie recess) and top face (beside the shutter-button window)
+engrave_lines = ["Skydive Kapowsin"];   // front face, one entry per line
+engrave_size  = 4.5;    // front letter size
+engrave_pitch = 5.5;    // front line spacing
+engrave_top      = "Mitch Henrie";      // top face ("" for none); reads with the front edge toward you
+engrave_top_size = 4.5;
 engrave_d     = 0.6;    // depth
 engrave_font  = "Liberation Sans:style=Bold";
 hook_flare = 1.2;   // the channel mouth at the bottom is flared by this much per side
@@ -351,6 +353,11 @@ module cage(c) {
                 translate([(ox0 + xo) / 2, pd + front_t + 0.01, zc + ((n - 1) / 2 - k) * engrave_pitch]) rotate([90, 0, 0])
                     linear_extrude(height = engrave_d + 0.01)
                         text(engrave_lines[k], size = engrave_size, font = engrave_font, halign = "center", valign = "center");
+        // engraved text on the top face, centred between the button window and the open side
+        if (engrave_top != "")
+            translate([(bx0 + btn_w + xo) / 2, (pd + front_t - back_t) / 2, oz1 + 0.01]) rotate([180, 0, 0])
+                linear_extrude(height = engrave_d + 0.01)
+                    text(engrave_top, size = engrave_top_size, font = engrave_font, halign = "center", valign = "center");
         // countersunk screw holes (head on the pocket side)
         for (sx = screw_xs) translate([sx, 0, 0]) {
             translate([0, -40, 0]) rotate([-90, 0, 0]) cylinder(d = screw_d, h = 41);
