@@ -415,7 +415,7 @@ module backplate(c) intersection() { cage(c); translate([-200, -200, -200]) cube
 // ================= HELMET WEDGE (the piece between the helmet and the cage) =================
 // Frame: x across (centred), y forward (+ = toward the cage), z up (z = 0 is the helmet side). The front-bottom edge is y = 0.
 // Printed as is: helmet side on the bed.
-w_plate_w = 73;    w_plate_l = 61;   w_plate_t = 4.4;   w_plate_r = 3;   // base plate (measured w / l / thickness; corner radius guessed)
+w_plate_w = 73;    w_plate_t = 4.4;   w_plate_r = 3;   // base plate (measured w / l / thickness; corner radius guessed)
 w_block_w = 69.7;           // width of the raised front part (measured)
 w_h       = 22.3;           // height at the front (measured 22.2-22.3)
 w_lean    = 20;             // front wall leans back from vertical (measured: 110 deg to the table)
@@ -435,32 +435,33 @@ w_bolt_d = 3.5;
 w_bolt_dx_f = 63 - 3.5;     // front pair, centre to centre (59.5)
 w_bolt_dx_b = 69.5 - 3.5;   // back pair, centre to centre (66)
 w_bolt_dy   = 49 - 3.5;     // front to back, centre to centre (45.5)
-w_bolt_edge = 3;            // plate side edge to the nearest edge of each hole (measured ~3)
+w_bolt_edge = 2.6;          // plate edge to the nearest edge of each hole, on all sides (measured on the original)
 w_bolt_front = 4;           // front of the side slot to the front hole centre (measured)
 // side slots over the two front bolts: open to the side, floor 7.2 above the plate, 7.8 deep at the floor, closing to a point at the top
 w_slot_z = 7.2;  w_slot_d = 7.8;  w_slot_w = 7;
+w_plate_l = w_slot_z * tan(w_lean) + w_bolt_front + w_bolt_dy + w_bolt_d / 2 + w_bolt_edge;   // front edge to back edge (~56.5), set by the holes
 
 function w_fy(z) = -z * tan(w_lean);     // front face y at height z
 // helmet dome under the plate (from the contour traces): ~140 mm radius side to side, ~105 mm front to back, 6 mm higher in the
 // centre of the recess than at the holes (measured on the original). z = 0 is the plate edges / holes, as when it sits on a table.
 w_dome_rx = 140;  w_dome_ry = 105;  w_dome_h = 6;
+// front toe: the bottom reaches w_toe_reach in front of the front holes (measured 12.5), i.e. past the foot of the front wall;
+// its underside is lifted w_toe_lift so it clears the ridge at the front of the helmet's recess (contour trace: ~2.5)
+w_toe_reach = 12.5;  w_toe_lift = 2.5;  w_toe_t = 3;   // toe thickness above the lifted underside: GUESS
 function w_dome(x, y, yc) = max(0, w_dome_h - x * x / (2 * w_dome_rx) - (y - yc) * (y - yc) / (2 * w_dome_ry));
 // solid between two height functions lo(x, y) and hi(x, y) over a rectangle
 module heightfield(x0, x1, y0, y1, lo, hi, n = 40) {
     N = (n + 1) * (n + 1);
-    function X(i) = x0 + (x1 - x0) * i / n;
-    function Y(j) = y0 + (y1 - y0) * j / n;
-    function T(i, j) = j * (n + 1) + i;
-    function B(i, j) = N + j * (n + 1) + i;
-    pts = concat([for (j = [0 : n], i = [0 : n]) [X(i), Y(j), hi(X(i), Y(j))]],
-                 [for (j = [0 : n], i = [0 : n]) [X(i), Y(j), lo(X(i), Y(j))]]);
+    pts = concat([for (j = [0 : n], i = [0 : n]) let(x = x0 + (x1 - x0) * i / n, y = y0 + (y1 - y0) * j / n) [x, y, hi(x, y)]],
+                 [for (j = [0 : n], i = [0 : n]) let(x = x0 + (x1 - x0) * i / n, y = y0 + (y1 - y0) * j / n) [x, y, lo(x, y)]]);
+    // T = top vertex index, B = bottom vertex index
     faces = concat(
-        [for (j = [0 : n - 1], i = [0 : n - 1]) [T(i, j), T(i, j + 1), T(i + 1, j + 1), T(i + 1, j)]],
-        [for (j = [0 : n - 1], i = [0 : n - 1]) [B(i, j), B(i + 1, j), B(i + 1, j + 1), B(i, j + 1)]],
-        [for (i = [0 : n - 1]) [T(i, 0), T(i + 1, 0), B(i + 1, 0), B(i, 0)]],
-        [for (i = [0 : n - 1]) [T(i + 1, n), T(i, n), B(i, n), B(i + 1, n)]],
-        [for (j = [0 : n - 1]) [T(0, j + 1), T(0, j), B(0, j), B(0, j + 1)]],
-        [for (j = [0 : n - 1]) [T(n, j), T(n, j + 1), B(n, j + 1), B(n, j)]]);
+        [for (j = [0 : n - 1], i = [0 : n - 1]) [j*(n+1)+i, (j+1)*(n+1)+i, (j+1)*(n+1)+i+1, j*(n+1)+i+1]],
+        [for (j = [0 : n - 1], i = [0 : n - 1]) [N+j*(n+1)+i, N+j*(n+1)+i+1, N+(j+1)*(n+1)+i+1, N+(j+1)*(n+1)+i]],
+        [for (i = [0 : n - 1]) [i, i+1, N+i+1, N+i]],
+        [for (i = [0 : n - 1]) [n*(n+1)+i+1, n*(n+1)+i, N+n*(n+1)+i, N+n*(n+1)+i+1]],
+        [for (j = [0 : n - 1]) [(j+1)*(n+1), j*(n+1), N+j*(n+1), N+(j+1)*(n+1)]],
+        [for (j = [0 : n - 1]) [j*(n+1)+n, (j+1)*(n+1)+n, N+(j+1)*(n+1)+n, N+j*(n+1)+n]]);
     polyhedron(pts, faces);
 }
 module wedge() {
@@ -488,6 +489,13 @@ module wedge() {
     difference() {
         union() {
             rotate([90, 0, 90]) linear_extrude(height = w_block_w, center = true) polygon(prof);
+            // front toe over the helmet's front ridge, rounded at its front edge, joined to the front wall
+            let(yt0 = yf_b + w_toe_reach, rt = w_toe_t / 2)
+                hull() {
+                    for (sx = [-1, 1]) translate([sx * (w_block_w / 2 - rt), yt0 - rt, w_toe_lift + rt]) sphere(r = rt, $fn = 16);
+                    translate([-w_block_w / 2, -0.5, w_toe_lift]) cube([w_block_w, 0.5, w_toe_t + (w_toe_lift + w_toe_t) * 0]);
+                    translate([-w_block_w / 2, w_fy(w_toe_lift + w_toe_t) - 0.5, w_toe_lift]) cube([w_block_w, 0.5, w_toe_t]);
+                }
             // base plate: a shell w_plate_t thick lying on the dome
             intersection() {
                 translate([0, 0, -1]) linear_extrude(height = 40) outline();
