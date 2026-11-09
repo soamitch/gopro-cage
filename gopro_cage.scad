@@ -440,6 +440,28 @@ w_bolt_front = 4;           // front of the side slot to the front hole centre (
 w_slot_z = 7.2;  w_slot_d = 7.8;  w_slot_w = 7;
 
 function w_fy(z) = -z * tan(w_lean);     // front face y at height z
+// helmet dome under the plate (from the contour traces): ~140 mm radius side to side, ~105 mm front to back, 6 mm higher in the
+// centre of the recess than at the holes (measured on the original). z = 0 is the plate edges / holes, as when it sits on a table.
+w_dome_rx = 140;  w_dome_ry = 105;  w_dome_h = 6;
+function w_dome(x, y, yc) = max(0, w_dome_h - x * x / (2 * w_dome_rx) - (y - yc) * (y - yc) / (2 * w_dome_ry));
+// solid between two height functions lo(x, y) and hi(x, y) over a rectangle
+module heightfield(x0, x1, y0, y1, lo, hi, n = 40) {
+    N = (n + 1) * (n + 1);
+    function X(i) = x0 + (x1 - x0) * i / n;
+    function Y(j) = y0 + (y1 - y0) * j / n;
+    function T(i, j) = j * (n + 1) + i;
+    function B(i, j) = N + j * (n + 1) + i;
+    pts = concat([for (j = [0 : n], i = [0 : n]) [X(i), Y(j), hi(X(i), Y(j))]],
+                 [for (j = [0 : n], i = [0 : n]) [X(i), Y(j), lo(X(i), Y(j))]]);
+    faces = concat(
+        [for (j = [0 : n - 1], i = [0 : n - 1]) [T(i, j), T(i, j + 1), T(i + 1, j + 1), T(i + 1, j)]],
+        [for (j = [0 : n - 1], i = [0 : n - 1]) [B(i, j), B(i + 1, j), B(i + 1, j + 1), B(i, j + 1)]],
+        [for (i = [0 : n - 1]) [T(i, 0), T(i + 1, 0), B(i + 1, 0), B(i, 0)]],
+        [for (i = [0 : n - 1]) [T(i + 1, n), T(i, n), B(i, n), B(i + 1, n)]],
+        [for (j = [0 : n - 1]) [T(0, j + 1), T(0, j), B(0, j), B(0, j + 1)]],
+        [for (j = [0 : n - 1]) [T(n, j), T(n, j + 1), B(n, j + 1), B(n, j)]]);
+    polyhedron(pts, faces);
+}
 module wedge() {
     yt = w_fy(w_h);                                  // top of the front wall
     yb = yt - w_top_l - (w_h - w_plate_t) / tan(w_back);
@@ -456,14 +478,23 @@ module wedge() {
     s0 = [0, w_fy(w_screw_z), w_screw_z];            // screw channel start on the front face (y, z)
     dir = [0, -cos(w_screw_up), -sin(w_screw_up)];   // into the wedge
     nut_s = w_screw_len - w_cage_wall - w_nut_t / 2 - 0.8;   // nut centre along the screw, from the front face
+    yc = (yf_b + yb_b) / 2;                          // dome centre: middle of the hole pattern
+    dome = function(x, y) w_dome(x, y, yc);
+    module outline() hull() {
+        offset(r = w_bolt_d / 2 + w_bolt_edge) polygon(quad);
+        translate([-w_block_w / 2, -1]) square([w_block_w, 1]);      // under the front block
+    }
     difference() {
         union() {
             rotate([90, 0, 90]) linear_extrude(height = w_block_w, center = true) polygon(prof);
-            linear_extrude(height = w_plate_t) hull() {
-                offset(r = w_bolt_d / 2 + w_bolt_edge) polygon(quad);
-                translate([-w_block_w / 2, -1]) square([w_block_w, 1]);      // under the front block
+            // base plate: a shell w_plate_t thick lying on the dome
+            intersection() {
+                translate([0, 0, -1]) linear_extrude(height = 40) outline();
+                heightfield(-45, 45, -w_plate_l - 5, 5, function(x, y) dome(x, y) - 0.01, function(x, y) dome(x, y) + w_plate_t);
             }
         }
+        // the dome under the plate
+        heightfield(-50, 50, -w_plate_l - 10, 10, function(x, y) -1, function(x, y) dome(x, y));
         // side slots (open to the side), one over each front bolt
         for (sx = [-1, 1]) let(x_in = sx0 - w_slot_w / 2, len = w_plate_w / 2 + 1 - x_in)
             translate([sx > 0 ? x_in : -x_in - len, 0, 0])
