@@ -8,7 +8,7 @@
 //   "padtest_set"  - three pad variants (A/B/C) on one plate, to compare fits in one print
 //   "padtest8"     - just the ledge + curved pad of the back plate (fastest fit test)
 //   "preview8" / "preview13" - cage + red dummy together (use a cross-section view to inspect)
-PART = "cage13";
+PART = "padtest8";
 
 $fn = 48;
 
@@ -53,15 +53,17 @@ lens_clear = 0.3;
 // PLACEHOLDERS (not measured yet): window through the left wall, cord hole
 lw_z0 = 8;  lw_z1 = 8;  lw_y0 = 4;  lw_y1 = 6;
 
-// elastic (hair tie) slot: runs along X through the back wall, in front of the pad curve, centred at the height of the
-// bottom of the lens window. Flat stadium shape (a flattened hair tie passes through it); a wider notch around the
-// opening on the open side lets the knot / bunched elastic sit flush.
-cord_slot_w = 7;     // slot size across Z (NOT MEASURED - adjust)
-cord_slot_t = 3.2;   // slot size across Y (thickness of the flattened tie)
-cord_y = -4.8;       // slot centre, behind the pocket floor (y = 0 is the floor)
-cord_notch_w = 12;   // notch size across Z at the open-side opening
-cord_notch_t = 7;    // notch size across Y
-cord_notch_l = 5;    // notch depth into the wall from the open side
+// elastic (hair tie) slot: a round hole (measured on the original) running along X through the back wall, just behind the
+// pocket floor; at the open side a cutout runs from the slot toward the back so the tie can come out behind the cage.
+cord_slot_w = 3;     // hole diameter (measured: 3 mm round)
+cord_slot_t = 3;     // (same: round)
+cord_floor = 1.3;    // thinnest plastic between the pocket floor and the hole (measured 1.3)
+cord_y = -(cord_floor + cord_slot_t / 2);   // hole centre, behind the pocket floor (y = 0 is the floor)
+cord_edge_from_top = 38.7;   // top face of the cage to the hole's top edge (measured on the original); fixed to the mount
+cord_from_top = cord_edge_from_top + cord_slot_w / 2;   // ... to the hole centre
+cord_notch_back = 3; // open-side cutout: runs this far back from the back of the hole (measured ~3) ...
+cord_notch_l = 3;    // ... and this far into the wall from the open side (NOT MEASURED - assumed 3)
+cord_wall = 0.8;     // minimum plastic kept between the hole and the pad surface
 // elastic hook: a small block on the front face at the open end, bottom corner, with a channel along X that is OPEN at the
 // bottom (drop the tie in from below)
 hook_x_len = 17.6;  hook_out = 7.6;  hook_h = 4;  hook_r = 1.5;  hook_chamfer = 1.5;   // hook height (its top is flush with the bottom of the lens window); hook_r rounds its edges
@@ -204,11 +206,14 @@ module dummy(c) {
 function pad_base_center(o) = o <= pad_bulge_o ? pad_top_center
                             : pad_top_center + (pad_bot_center - pad_top_center) * (o - pad_bulge_o) / (pad_h - pad_bulge_o);
 // Sag (corner depth minus centre depth) at entry i of pad_corner; never negative
-// Contour-gauge correction (original vs cage8 draft): the original has more material in the middle of the pad, about
-// 1.5 mm at the screw holes and a bit more in the centre, most of it in the upper half, fading out toward the bottom edge.
-// Applied by reducing the sag (corners unchanged): the centre gets pad_fill * pad_fill_f(o), the screw holes ~0.7 of that.
-pad_fill = 2.0;
-function pad_fill_f(o) = lookup(o, [[0, 0], [pad_ledge_h, 0.6], [pad_bulge_o, 1], [11, 1], [18.8, 0.5], [pad_h, 0]]);
+// Contour-gauge correction (original vs cage8 draft): the DRAFT bulges out more than the original in the middle of the pad,
+// about 1.5 mm at the screw holes and a bit more in the centre, peaking on the convex part of the curve, fading out toward the bottom edge.
+// Applied through the sag (corners unchanged): the centre changes by pad_fill * pad_fill_f(o), the screw holes ~0.7 of that.
+// Positive pad_fill adds material, negative removes it.
+pad_fill = -2.0;
+// Zero for the top 3 mm below the ledge, full on the convex part (8-14 mm below the ledge), fading out at the bottom edge.
+// The hair-tie slot sits just behind that part; the cut never comes closer to it than cord_wall.
+function pad_fill_f(o) = lookup(o, [[0, 0], [3, 0], [pad_bulge_o, 0.4], [8, 1], [14, 1], [18.8, 0.5], [pad_h, 0]]);
 function pad_s(i) = max(0, (len($pc[i]) > 2 ? $pc[i][2] : i < 1 ? 0 : max(0, $pc[i][1] - pad_base_center($pc[i][0])))
                            - pad_fill * pad_fill_f($pc[i][0]));   // entry 0 is the ramp above the ledge: no sag there
 
@@ -302,8 +307,11 @@ module cage(c) {
                 translate([x0h, yi, zb]) cube([0.01, pd + front_t - yi + 0.01, hook_h]);
             }
         }
-        // concave curve across the back of the pad
-        pad_cut();
+        // concave curve across the back of the pad (never closer than cord_wall to the hair-tie slot)
+        difference() {
+            pad_cut();
+            translate([ox0 - 2, cord_y, ref_top - cord_from_top]) stadium_x(cord_slot_w + 2 * cord_wall, cord_slot_t + 2 * cord_wall, xo - ox0 + 14);
+        }
         // camera pocket (open to the right)
         translate([px0, 0, pz0]) rbox(xo + 10 - px0, pz1 - pz0, pd, c[3] + clear);
         // shutter button: window through the top wall + channel in the ceiling out to the open side
@@ -316,8 +324,9 @@ module cage(c) {
         // PLACEHOLDER window through the left wall
         translate([ox0 - 1, lw_y0, pz0 + lw_z0]) cube([wall_l + 2, pd - lw_y0 - lw_y1, (pz1 - pz0) - lw_z0 - lw_z1]);
         // elastic cord hole through the back wall, with a notch around the opening on the open side
-        translate([ox0 - 1, cord_y, lw_z0v]) stadium_x(cord_slot_w, cord_slot_t, xo - ox0 + 12);
-        translate([xo - cord_notch_l, cord_y, lw_z0v]) stadium_x(cord_notch_w, cord_notch_t, cord_notch_l + 10);
+        translate([ox0 - 1, cord_y, ref_top - cord_from_top]) stadium_x(cord_slot_w, cord_slot_t, xo - ox0 + 12);
+        translate([xo - cord_notch_l, cord_y - cord_slot_t / 2 - cord_notch_back, ref_top - cord_from_top - cord_slot_w / 2])
+            cube([cord_notch_l + 10, cord_slot_t / 2 + cord_notch_back, cord_slot_w]);
         // channel of the elastic hook: its floor is the recess floor (rec_d into the front face), it runs out through the left end of
         // the hook (no wall there) and is open at the bottom, flared on the outer side
         hull() {
