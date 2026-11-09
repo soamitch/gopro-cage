@@ -9,7 +9,7 @@
 //   "padtest8"     - just the ledge + curved pad of the back plate (fastest fit test)
 //   "preview8" / "preview13" - cage + red dummy together (use a cross-section view to inspect)
 //   "wedge"        - the helmet wedge (piece between the helmet and the cage), helmet side down
-PART = "backplate8";
+PART = "wedge";
 
 $fn = 48;
 
@@ -430,8 +430,11 @@ w_cage_wall = 4.55;         // cage back wall the screw passes through first (fr
 w_nut_af = 7.3;  w_nut_t = 3.6;   // M4 nut pocket (7 mm across flats + clearance), opened from the helmet side
 // helmet bolts: 3.5 mm holes, ~3 mm from the side and back edges to the hole edge (measured)
 w_bolt_d = 3.5;
-w_bolt_side = 3 + 3.5 / 2;  // side edge to hole centre
-w_bolt_back = 3 + 3.5 / 2;  // back edge to hole centre
+// helmet hole pattern (measured on the helmet, edge to edge minus one hole): a trapezoid, wider at the back
+w_bolt_dx_f = 63 - 3.5;     // front pair, centre to centre (59.5)
+w_bolt_dx_b = 69.5 - 3.5;   // back pair, centre to centre (66)
+w_bolt_dy   = 49 - 3.5;     // front to back, centre to centre (45.5)
+w_bolt_edge = 3;            // plate side edge to the nearest edge of each hole (measured ~3)
 w_bolt_front = 4;           // front of the side slot to the front hole centre (measured)
 // side slots over the two front bolts: open to the side, floor 7.2 above the plate, 7.8 deep at the floor, closing to a point at the top
 w_slot_z = 7.2;  w_slot_d = 7.8;  w_slot_w = 7;
@@ -443,23 +446,31 @@ module wedge() {
     prof = [[0, 0], [yt, w_h], [yt - w_top_l, w_h], [yb, w_plate_t], [-w_plate_l, w_plate_t], [-w_plate_l, 0]];
     yf = w_fy(w_slot_z);                             // front of the slot (on the front face, at the slot floor)
     slot = [[yf + 0.01, w_slot_z], [yf - w_slot_d, w_slot_z], [yt - 0.3, w_h + 0.01], [yt + 1, w_h + 1], [yf + 1, w_slot_z]];
-    sx0 = w_plate_w / 2 - w_bolt_side;               // bolt x (each side)
+    sx0 = w_bolt_dx_f / 2;                           // front bolt x (each side)
+    yf_b = w_fy(w_slot_z) - w_bolt_front;            // front bolt y
+    yb_b = yf_b - w_bolt_dy;                         // back bolt y
+    // plate outline: follows the trapezoid of the holes, w_bolt_edge clear of each hole, run back to the full plate length
+    e = (-w_plate_l + w_bolt_d / 2 + w_bolt_edge) - yb_b;            // extra length behind the back holes (negative = further back)
+    kx = (w_bolt_dx_b - w_bolt_dx_f) / 2 / w_bolt_dy;                // side taper (x per y)
+    quad = [[-sx0, yf_b], [sx0, yf_b], [w_bolt_dx_b / 2 - kx * e, yb_b + e], [-w_bolt_dx_b / 2 + kx * e, yb_b + e]];
     s0 = [0, w_fy(w_screw_z), w_screw_z];            // screw channel start on the front face (y, z)
     dir = [0, -cos(w_screw_up), -sin(w_screw_up)];   // into the wedge
     nut_s = w_screw_len - w_cage_wall - w_nut_t / 2 - 0.8;   // nut centre along the screw, from the front face
     difference() {
         union() {
             rotate([90, 0, 90]) linear_extrude(height = w_block_w, center = true) polygon(prof);
-            translate([0, -w_plate_l / 2, 0]) linear_extrude(height = w_plate_t)
-                offset(r = w_plate_r) square([w_plate_w - 2 * w_plate_r, w_plate_l - 2 * w_plate_r], center = true);
+            linear_extrude(height = w_plate_t) hull() {
+                offset(r = w_bolt_d / 2 + w_bolt_edge) polygon(quad);
+                translate([-w_block_w / 2, -1]) square([w_block_w, 1]);      // under the front block
+            }
         }
         // side slots (open to the side), one over each front bolt
         for (sx = [-1, 1]) let(x_in = sx0 - w_slot_w / 2, len = w_plate_w / 2 + 1 - x_in)
             translate([sx > 0 ? x_in : -x_in - len, 0, 0])
                 rotate([90, 0, 90]) linear_extrude(height = len) polygon(slot);
         // helmet bolt holes
-        for (sx = [-1, 1], y = [w_fy(w_slot_z) - w_bolt_front, -w_plate_l + w_bolt_back])
-            translate([sx * sx0, y, -1]) cylinder(d = w_bolt_d, h = 30, $fn = 24);
+        for (p = [[-sx0, yf_b], [sx0, yf_b], [-w_bolt_dx_b / 2, yb_b], [w_bolt_dx_b / 2, yb_b]])
+            translate([p[0], p[1], -1]) cylinder(d = w_bolt_d, h = 30, $fn = 24);
         // cage screw channels + nut pockets (nut inserted from the helmet side)
         for (sx = [-1, 1]) translate([sx * w_screw_dx / 2, 0, 0]) {
             translate(s0 - 2 * dir) rotate([-(90 - w_screw_up), 0, 0]) rotate([180, 0, 0]) cylinder(d = w_screw_d, h = 2 + w_screw_len - w_cage_wall + 1.5, $fn = 24);
