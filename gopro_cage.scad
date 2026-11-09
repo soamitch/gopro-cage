@@ -431,6 +431,8 @@ w_cage_wall = 4.55;         // cage back wall the screw passes through first (fr
 w_nut_af = 7.3;  w_nut_t = 3.6;   // M4 nut pocket (7 mm across flats + clearance), opened from the helmet side
 // helmet bolts: 3.5 mm holes, ~3 mm from the side and back edges to the hole edge (measured)
 w_bolt_d = 3.5;
+w_washer_d = 8;             // flat washer seats around the two rear holes (measured)
+w_washer_h = 1;             // seat stands this far above the highest point of the plate around it (GUESS)
 // helmet hole pattern (measured on the helmet, edge to edge minus one hole): a trapezoid, wider at the back
 w_bolt_dx_f = 63 - 3.5;     // front pair, centre to centre (59.5)
 w_bolt_dx_b = 69.5 - 3.5;   // back pair, centre to centre (66)
@@ -497,9 +499,13 @@ module wedge() {
                     translate([-w_block_w / 2, -0.5, w_toe_lift]) cube([w_block_w, 0.5, w_toe_t + (w_toe_lift + w_toe_t) * 0]);
                     translate([-w_block_w / 2, w_fy(w_toe_lift + w_toe_t) - 0.5, w_toe_lift]) cube([w_block_w, 0.5, w_toe_t]);
                 }
+            // flat washer seats on the rear holes: top is level with the highest point of the plate around the seat
+            for (sx = [-1, 1]) let(hx = sx * w_bolt_dx_b / 2,
+                    ztop = max([for (a = [0 : 30 : 330]) dome(hx + w_washer_d / 2 * cos(a), yb_b + w_washer_d / 2 * sin(a))]) + w_plate_t + w_washer_h)
+                translate([hx, yb_b, dome(hx, yb_b) - 5]) cylinder(d = w_washer_d, h = ztop - dome(hx, yb_b) + 5, $fn = 32);
             // base plate: a shell w_plate_t thick lying on the dome
             intersection() {
-                translate([0, 0, -1]) linear_extrude(height = 40) outline();
+                translate([0, 0, -30]) linear_extrude(height = 70) outline();      // (was clipping the low corners flat)
                 heightfield(-45, 45, -w_plate_l - 5, 5, function(x, y) dome(x, y) - 0.01, function(x, y) dome(x, y) + w_plate_t);
             }
         }
