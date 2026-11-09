@@ -522,8 +522,11 @@ module wedge() {
                 function(x, y) dome(x, y) + w_toe_lift * min(1, (y - y0) / 0.5) + max(0, y - y0 - w_toe_flat) * tan(w_toe_slope), 60);
         // side slots (open to the side), one over each front bolt
         for (sx = [-1, 1]) let(x_in = sx0 - w_slot_w / 2, len = w_plate_w / 2 + 1 - x_in)
-            translate([sx > 0 ? x_in : -x_in - len, 0, 0])
+            translate([sx > 0 ? x_in : -x_in - len, 0, 0]) {
                 rotate([90, 0, 90]) linear_extrude(height = len) polygon(slot);
+                // straight-down access from the top to the bolt head (hex key), as on the original
+                translate([0, yf_b - w_slot_w / 2, w_slot_z]) cube([len, w_slot_w, w_h + 5]);
+            }
         // helmet bolt holes
         for (p = [[-sx0, yf_b], [sx0, yf_b], [-w_bolt_dx_b / 2, yb_b], [w_bolt_dx_b / 2, yb_b]])
             translate([p[0], p[1], -30]) cylinder(d = w_bolt_d, h = 60, $fn = 24);
