@@ -419,7 +419,7 @@ w_plate_w = 73;    w_plate_t = 4.4;   w_plate_r = 3;   // base plate (measured w
 w_block_w = 69.7;           // width of the raised front part (measured)
 w_h       = 22.3;           // height at the front (measured 22.2-22.3)
 w_lean    = 20;             // front wall leans back from vertical (measured: 110 deg to the table)
-w_top_l   = 12;             // flat top behind the front edge (GUESS: your trace suggests ~7, but then the nuts would break through the slope)
+w_top_l   = 17;             // flat top, front to back (measured)
 w_back    = 52;             // back slope angle down to the plate (from your side trace, ~50)
 // cage screws: two channels 38.5 apart (centred), perpendicular to the cage, i.e. 30 deg above the plate (measured)
 w_screw_dx = screw_dx;      // 38.54 (matches your 38.5)
@@ -449,7 +449,10 @@ function w_fy(z) = -z * tan(w_lean);     // front face y at height z
 w_dome_rx = 140;  w_dome_ry = 105;  w_dome_h = 6;
 // front toe: the bottom reaches w_toe_reach in front of the front holes (measured 12.5), i.e. past the foot of the front wall;
 // its underside is lifted w_toe_lift so it clears the ridge at the front of the helmet's recess (contour trace: ~2.5)
-w_toe_reach = 12.5;  w_toe_lift = 2.5;  w_toe_t = 3;   // toe thickness above the lifted underside: GUESS
+w_toe_reach = 12.5;  w_toe_lift = 2.5;
+w_toe_top = 5;      // top of the toe above the table at the centre (measured); the toe follows the dome's curve
+w_toe_flat = 4;     // flat part of the toe's top before the short slope up to the front wall (measured)
+w_toe_slope = 45;   // that slope (GUESS; could later be matched to the cage's back surface)
 // (not clipped: the curve keeps going down past the holes to the plate edges, like the original)
 function w_dome(x, y, yc) = w_dome_h - x * x / (2 * w_dome_rx) - (y - yc) * (y - yc) / (2 * w_dome_ry);
 // solid between two height functions lo(x, y) and hi(x, y) over a rectangle
@@ -470,7 +473,8 @@ module heightfield(x0, x1, y0, y1, lo, hi, n = 40) {
 module wedge() {
     yt = w_fy(w_h);                                  // top of the front wall
     yb = yt - w_top_l - (w_h - w_plate_t) / tan(w_back);
-    prof = [[0, 0], [yt, w_h], [yt - w_top_l, w_h], [yb, w_plate_t], [-w_plate_l, w_plate_t], [-w_plate_l, 0]];
+    // block runs down past the bottom; the dome cut trims it to the helmet's curve (so it reaches the helmet at the sides too)
+    prof = [[-w_fy(10), -10], [yt, w_h], [yt - w_top_l, w_h], [yb, w_plate_t], [yb, -10]];
     yf = w_fy(w_slot_z);                             // front of the slot (on the front face, at the slot floor)
     slot = [[yf + 0.01, w_slot_z], [yf - w_slot_d, w_slot_z], [yt - 0.3, w_h + 0.01], [yt + 1, w_h + 1], [yf + 1, w_slot_z]];
     sx0 = w_bolt_dx_f / 2;                           // front bolt x (each side)
@@ -492,12 +496,13 @@ module wedge() {
     difference() {
         union() {
             rotate([90, 0, 90]) linear_extrude(height = w_block_w, center = true) polygon(prof);
-            // front toe over the helmet's front ridge, rounded at its front edge, joined to the front wall
-            let(yt0 = yf_b + w_toe_reach, rt = w_toe_t / 2)
-                hull() {
-                    for (sx = [-1, 1]) translate([sx * (w_block_w / 2 - rt), yt0 - rt, w_toe_lift + rt]) sphere(r = rt, $fn = 16);
-                    translate([-w_block_w / 2, -0.5, w_toe_lift]) cube([w_block_w, 0.5, w_toe_t + (w_toe_lift + w_toe_t) * 0]);
-                    translate([-w_block_w / 2, w_fy(w_toe_lift + w_toe_t) - 0.5, w_toe_lift]) cube([w_block_w, 0.5, w_toe_t]);
+            // front toe over the helmet's front ridge: follows the dome, underside lifted w_toe_lift, top w_toe_top above the table
+            // at the centre; flat for w_toe_flat from its front edge, then a short slope up into the front wall
+            let(yt0 = yf_b + w_toe_reach, c0 = dome(0, yt0), yk = yt0 - w_toe_flat)
+                intersection() {
+                    translate([-w_block_w / 2, -10, -30]) cube([w_block_w, yt0 + 10, 60]);
+                    heightfield(-w_block_w / 2 - 1, w_block_w / 2 + 1, -10, yt0, function(x, y) dome(x, y) - c0 + w_toe_lift + c0,
+                        function(x, y) dome(x, y) - c0 + w_toe_top + max(0, yk - y) * tan(w_toe_slope), 30);
                 }
             // flat, level washer seats on the rear holes: top is w_washer_h above the highest point of the plate around the seat
             for (sx = [-1, 1]) let(hx = sx * w_bolt_dx_b / 2,
