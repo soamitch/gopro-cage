@@ -9,7 +9,8 @@
 //   "padtest8"     - just the ledge + curved pad of the back plate (fastest fit test)
 //   "preview8" / "preview13" - cage + red dummy together (use a cross-section view to inspect)
 //   "wedge"        - the helmet wedge (piece between the helmet and the cage), helmet side down
-PART = "wedge";
+//   "wedge_plate"  - just the wedge's domed base plate with its 4 holes (quick fit test on the helmet)
+PART = "wedge_plate";
 
 $fn = 48;
 
@@ -513,6 +514,13 @@ module wedge() {
 }
 
 if (PART == "wedge")        wedge();
+// fit test for the dome: just the base plate (shell + holes), without the front block
+if (PART == "wedge_plate")
+    let(yc = w_fy(w_slot_z) - w_bolt_front - w_bolt_dy / 2)
+        intersection() {
+            wedge();
+            heightfield(-50, 50, -w_plate_l - 10, 10, function(x, y) -1, function(x, y) w_dome(x, y, yc) + w_plate_t + 0.01);
+        }
 if (PART == "backplate8")   rotate([-90, 0, 0]) mirror([1, 0, 0]) backplate(H8);
 // ---------- Pad variants, for printing several fit tests at once ----------
 // amp  = S-shape along the pad: the upper part bulges toward the helmet by amp mm, the lower part pulls back by amp mm
