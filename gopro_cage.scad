@@ -68,6 +68,12 @@ cord_wall = 0.8;     // minimum plastic kept between the hole and the pad surfac
 // bottom (drop the tie in from below)
 hook_x_len = 17.6;  hook_out = 7.6;  hook_h = 4;  hook_r = 1.5;  hook_chamfer = 1.5;   // hook height (its top is flush with the bottom of the lens window); hook_r rounds its edges
 rec_d = 1.5;        // depth of the hair-tie recess in the front face (the front wall is 2.5 mm)
+// engraving on the front face, below the hair-tie recess
+engrave_lines = ["Mitch Henrie", "Skydive Kapowsin"];
+engrave_size  = 3.5;    // letter size
+engrave_pitch = 4.8;    // line spacing
+engrave_d     = 0.6;    // depth
+engrave_font  = "Liberation Sans:style=Bold";
 hook_flare = 1.2;   // the channel mouth at the bottom is flared by this much per side
 hook_eye_w = 2.5;  hook_eye_t = 3.4;   // channel height (open at the bottom, 1.5 mm roof left above it) and width
 module stadium_x(w, t, len) {   // stadium cross-section (w along Z, t along Y) extruded along +X
@@ -338,6 +344,13 @@ module cage(c) {
         // recess for the hair tie along the front face, from the closed (left) wall to the hook, so the tie lies nearly flush
         translate([ox0 - 1, pd + front_t - rec_d, lw_z0v - hook_h - 0.5])
             cube([(xo - hook_x_len - 2) - (ox0 - 1) + 1, rec_d + 2, hook_eye_w + 0.5]);
+        // engraved text on the front face, in the strip below the hair-tie recess (written un-mirrored here: the output is mirrored,
+        // so it reads correctly from the front)
+        let(z_lo = oz0 + edge_r + 0.5, z_hi = lw_z0v - hook_h - 0.5 - 1.2, zc = (z_lo + z_hi) / 2, n = len(engrave_lines))
+            for (k = [0 : n - 1])
+                translate([(ox0 + xo) / 2, pd + front_t + 0.01, zc + ((n - 1) / 2 - k) * engrave_pitch]) rotate([90, 0, 0])
+                    linear_extrude(height = engrave_d + 0.01)
+                        text(engrave_lines[k], size = engrave_size, font = engrave_font, halign = "center", valign = "center");
         // countersunk screw holes (head on the pocket side)
         for (sx = screw_xs) translate([sx, 0, 0]) {
             translate([0, -40, 0]) rotate([-90, 0, 0]) cylinder(d = screw_d, h = 41);
