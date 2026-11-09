@@ -448,7 +448,8 @@ w_dome_rx = 140;  w_dome_ry = 105;  w_dome_h = 6;
 // front toe: the bottom reaches w_toe_reach in front of the front holes (measured 12.5), i.e. past the foot of the front wall;
 // its underside is lifted w_toe_lift so it clears the ridge at the front of the helmet's recess (contour trace: ~2.5)
 w_toe_reach = 12.5;  w_toe_lift = 2.5;  w_toe_t = 3;   // toe thickness above the lifted underside: GUESS
-function w_dome(x, y, yc) = max(0, w_dome_h - x * x / (2 * w_dome_rx) - (y - yc) * (y - yc) / (2 * w_dome_ry));
+// (not clipped: the curve keeps going down past the holes to the plate edges, like the original)
+function w_dome(x, y, yc) = w_dome_h - x * x / (2 * w_dome_rx) - (y - yc) * (y - yc) / (2 * w_dome_ry);
 // solid between two height functions lo(x, y) and hi(x, y) over a rectangle
 module heightfield(x0, x1, y0, y1, lo, hi, n = 40) {
     N = (n + 1) * (n + 1);
@@ -503,7 +504,7 @@ module wedge() {
             }
         }
         // the dome under the plate
-        heightfield(-50, 50, -w_plate_l - 10, 10, function(x, y) -1, function(x, y) dome(x, y));
+        heightfield(-50, 50, -w_plate_l - 10, 10, function(x, y) -30, function(x, y) dome(x, y));
         // side slots (open to the side), one over each front bolt
         for (sx = [-1, 1]) let(x_in = sx0 - w_slot_w / 2, len = w_plate_w / 2 + 1 - x_in)
             translate([sx > 0 ? x_in : -x_in - len, 0, 0])
@@ -527,7 +528,7 @@ if (PART == "wedge_plate")
     let(yc = w_fy(w_slot_z) - w_bolt_front - w_bolt_dy / 2)
         intersection() {
             wedge();
-            heightfield(-50, 50, -w_plate_l - 10, 10, function(x, y) -1, function(x, y) w_dome(x, y, yc) + w_plate_t + 0.01);
+            heightfield(-50, 50, -w_plate_l - 10, 10, function(x, y) -30, function(x, y) w_dome(x, y, yc) + w_plate_t + 0.01);
         }
 if (PART == "backplate8")   rotate([-90, 0, 0]) mirror([1, 0, 0]) backplate(H8);
 // ---------- Pad variants, for printing several fit tests at once ----------
