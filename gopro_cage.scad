@@ -204,7 +204,13 @@ module dummy(c) {
 function pad_base_center(o) = o <= pad_bulge_o ? pad_top_center
                             : pad_top_center + (pad_bot_center - pad_top_center) * (o - pad_bulge_o) / (pad_h - pad_bulge_o);
 // Sag (corner depth minus centre depth) at entry i of pad_corner; never negative
-function pad_s(i) = len($pc[i]) > 2 ? $pc[i][2] : i < 1 ? 0 : max(0, $pc[i][1] - pad_base_center($pc[i][0]));   // entry 0 is the ramp above the ledge: no sag there
+// Contour-gauge correction (original vs cage8 draft): the original has more material in the middle of the pad, about
+// 1.5 mm at the screw holes and a bit more in the centre, most of it in the upper half, fading out toward the bottom edge.
+// Applied by reducing the sag (corners unchanged): the centre gets pad_fill * pad_fill_f(o), the screw holes ~0.7 of that.
+pad_fill = 2.0;
+function pad_fill_f(o) = lookup(o, [[0, 0], [pad_ledge_h, 0.6], [pad_bulge_o, 1], [11, 1], [18.8, 0.5], [pad_h, 0]]);
+function pad_s(i) = max(0, (len($pc[i]) > 2 ? $pc[i][2] : i < 1 ? 0 : max(0, $pc[i][1] - pad_base_center($pc[i][0])))
+                           - pad_fill * pad_fill_f($pc[i][0]));   // entry 0 is the ramp above the ledge: no sag there
 
 // Outline (in the X-Y plane) of everything BEHIND the pad's curved surface at one height.
 // dc = depth at the corners, s = sag, so the centre is s closer to the front. The curve is a circular arc.
