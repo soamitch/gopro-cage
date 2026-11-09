@@ -9,7 +9,7 @@
 //   "padtest8"     - just the ledge + curved pad of the back plate (fastest fit test)
 //   "preview8" / "preview13" - cage + red dummy together (use a cross-section view to inspect)
 //   "wedge"        - the helmet wedge (piece between the helmet and the cage), helmet side down
-PART = "cage8";
+PART = "backplate8";
 
 $fn = 48;
 
