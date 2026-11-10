@@ -14,7 +14,7 @@
 //   "curve_gauges" - labelled strips with different curves, to measure the helmet in the recess (S = side to side, F = front to back)
 //   "fit8" / "fit8_clash" - cage8 bolted to the wedge (preview) / their overlap (should be empty)
 //   "helmet8" / "fit8_helmet" - the helmet shape implied by the wedge underside + cage pad / everything together (preview)
-PART = "curve_gauges";
+PART = "wedge_outline";
 
 $fn = 48;
 
@@ -451,7 +451,9 @@ w_slot_z = 7.2;  w_slot_d = 7.8;  w_slot_w = 7;
 function w_fy(z) = -z * tan(w_lean);     // front face y at height z
 // helmet dome under the plate (from the contour traces): ~140 mm radius side to side, ~105 mm front to back, 6 mm higher in the
 // centre of the recess than at the holes (measured on the original). z = 0 is the plate edges / holes, as when it sits on a table.
-w_dome_rx = 140;  w_dome_ry = 105;  w_dome_h = 6;   // (115 side to side fitted worse than 140; measure with curve_gauges)
+w_dome_rx = 120;  w_dome_ry = 90;    // measured with curve_gauges: S120 / F90 fitted best (the tightest strips tried)
+w_dome_front_hole_z = 0.38;   // underside height at the front holes (kept from the earlier fit, so the toe/front stays put)
+w_dome_h = w_dome_front_hole_z + (w_bolt_dx_f / 2) * (w_bolt_dx_f / 2) / (2 * w_dome_rx) + (w_bolt_dy / 2) * (w_bolt_dy / 2) / (2 * w_dome_ry);
 // front toe: the flat front wall runs all the way down to the toe's tip; the toe's underside angles back up to that tip.
 // The tip is w_toe_reach in front of the front holes (measured 12.5). Under the toe the bottom is lifted w_toe_lift (to clear
 // the ridge at the front of the helmet's recess) for w_toe_flat, then slopes up at w_toe_slope until it meets the front wall.
