@@ -479,6 +479,7 @@ module heightfield(x0, x1, y0, y1, lo, hi, n = 40) {
         [for (j = [0 : n - 1]) [j*(n+1)+n, (j+1)*(n+1)+n, N+(j+1)*(n+1)+n, N+j*(n+1)+n]]);
     polyhedron(pts, faces);
 }
+w_front_r = 6;     // front corners rounded in plan view (all the way up) to fit the rounded corners of the helmet's pocket (GUESS)
 w_tab_gap = 0.2;   // gap left under the cage's top tab (the screw panel on the front face is the seat)
 module wedge(fit_cage = true) {
     yt = w_fy(w_h);                                  // top of the front wall
@@ -523,6 +524,9 @@ module wedge(fit_cage = true) {
         }
         // the cage's own back (Hero 8 and Hero 13 cages share it): the wedge front takes its exact shape, so nothing collides
         if (fit_cage) { cage_on_wedge(H8); cage_on_wedge(H13); }
+        // round the two front corners (plan view)
+        for (m = [0, 1]) mirror([m, 0, 0]) translate([w_block_w / 2 - w_front_r, w_fy(w_toe_tip_z) - w_front_r, -50])   // from the toe tip (the front edge)
+            linear_extrude(height = 100) difference() { square([w_front_r + 20, w_front_r + 20]); circle(r = w_front_r, $fn = 48); }
         // the dome under the plate
         heightfield(-50, 50, -w_plate_l - 10, 10, function(x, y) -30, function(x, y) dome(x, y));
         // under the toe: lifted w_toe_lift, flat for w_toe_flat, then sloping up to meet the front wall at the tip
