@@ -11,6 +11,7 @@
 //   "wedge"        - the helmet wedge (piece between the helmet and the cage), helmet side down
 //   "wedge_plate"  - just the wedge's domed base plate with its 4 holes (quick fit test on the helmet)
 //   "fit8" / "fit8_clash" - cage8 bolted to the wedge (preview) / their overlap (should be empty)
+//   "helmet8" / "fit8_helmet" - the helmet shape implied by the wedge underside + cage pad / everything together (preview)
 PART = "wedge_plate";
 
 $fn = 48;
@@ -629,3 +630,21 @@ function cage2w(p) = let(y = ref_front_to_floor - p[0] - cage_screw_pt[1], z = r
 module cage_on_wedge(c) translate(w_s0) rotate([w_screw_up, 0, 0]) translate(-cage_screw_pt) mirror([1, 0, 0]) cage(c);
 if (PART == "fit8") { color("orange") wedge(); color("cyan") cage_on_wedge(H8); }
 if (PART == "fit8_clash") intersection() { wedge(); cage_on_wedge(H8); }
+
+// ---------- Helmet envelope: the space the two parts leave for the helmet ----------
+// = below the wedge's underside (dome + lifted toe) AND behind the cage's back (its real curved pad), over the cage width.
+// Its top surface is where the helmet would have to be for both parts to touch it.
+module helmet_env()
+    let(yc = w_yf_b - w_bolt_dy / 2, y0 = w_yf_b + w_toe_lift_start)
+    intersection() {
+        heightfield(-36, 36, -w_plate_l - 5, 40, function(x, y) -40,
+            function(x, y) y <= y0 ? w_dome(x, y, yc)
+                : w_dome(x, y, yc) + w_toe_lift * min(1, (y - y0) / 0.5) + max(0, y - y0 - w_toe_flat) * tan(w_toe_slope), 60);
+        translate(w_s0) rotate([w_screw_up, 0, 0]) translate(-cage_screw_pt) mirror([1, 0, 0])
+            difference() {
+                translate([ix0 + 0.5, -80, ref_bottom + 0.5]) cube([x_open8 - ix0 - 1, 80, ref_top - ref_bottom - 1]);
+                difference() { interface(H8); pad_cut(); }
+            }
+    }
+if (PART == "helmet8") helmet_env();
+if (PART == "fit8_helmet") { color("orange") wedge(); color("cyan") cage_on_wedge(H8); color("gray") helmet_env(); }
