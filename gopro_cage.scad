@@ -10,6 +10,7 @@
 //   "preview8" / "preview13" - cage + red dummy together (use a cross-section view to inspect)
 //   "wedge"        - the helmet wedge (piece between the helmet and the cage), helmet side down
 //   "wedge_plate"  - just the wedge's domed base plate with its 4 holes (quick fit test on the helmet)
+//   "fit8" / "fit8_clash" - cage8 bolted to the wedge (preview) / their overlap (should be empty)
 PART = "wedge_plate";
 
 $fn = 48;
@@ -477,7 +478,8 @@ module heightfield(x0, x1, y0, y1, lo, hi, n = 40) {
         [for (j = [0 : n - 1]) [j*(n+1)+n, (j+1)*(n+1)+n, N+(j+1)*(n+1)+n, N+j*(n+1)+n]]);
     polyhedron(pts, faces);
 }
-module wedge() {
+w_tab_gap = 0.2;   // gap left under the cage's top tab (the screw panel on the front face is the seat)
+module wedge(fit_cage = true) {
     yt = w_fy(w_h);                                  // top of the front wall
     yb = yt - w_top_l - (w_h - w_plate_t) / tan(w_back);
     // block runs down past the bottom; the dome cut trims it to the helmet's curve (so it reaches the helmet at the sides too)
@@ -504,6 +506,10 @@ module wedge() {
     difference() {
         union() {
             rotate([90, 0, 90]) linear_extrude(height = w_block_w, center = true) polygon(prof);
+            // top raised to sit under the cage's top tab (w_tab_gap below it)
+            if (fit_cage) let(p1 = cage2w([pad_floor_depth + thin_t, tri_h]) - [0, w_tab_gap], p2 = cage2w(tab_tip) - [0, w_tab_gap])
+                rotate([90, 0, 90]) linear_extrude(height = w_block_w, center = true)
+                    polygon([[w_fy(w_h - 1), w_h - 1], [w_fy(p1[1]), p1[1]], p2, [p2[0], w_h - 1]]);
             // flat, level washer seats on the rear holes: top is w_washer_h above the highest point of the plate around the seat
             for (sx = [-1, 1]) let(hx = sx * w_bolt_dx_b / 2,
                     ztop = max([for (a = [0 : 30 : 330]) dome(hx + w_washer_d / 2 * cos(a), yb_b + w_washer_d / 2 * sin(a))]) + w_plate_t + w_washer_h)
@@ -514,6 +520,8 @@ module wedge() {
                 heightfield(-45, 45, -w_plate_l - 5, 5, function(x, y) dome(x, y) - 0.01, function(x, y) dome(x, y) + w_plate_t);
             }
         }
+        // the cage's own back (Hero 8 and Hero 13 cages share it): the wedge front takes its exact shape, so nothing collides
+        if (fit_cage) { cage_on_wedge(H8); cage_on_wedge(H13); }
         // the dome under the plate
         heightfield(-50, 50, -w_plate_l - 10, 10, function(x, y) -30, function(x, y) dome(x, y));
         // under the toe: lifted w_toe_lift, flat for w_toe_flat, then sloping up to meet the front wall at the tip
@@ -547,7 +555,7 @@ if (PART == "wedge")        wedge();
 w_test_t = 1.5;
 module wedge_plate_shell() let(yc = w_yf_b - w_bolt_dy / 2)
     intersection() {
-        wedge();
+        wedge(false);
         heightfield(-50, 50, -w_plate_l - 10, 15, function(x, y) -30, function(x, y) w_dome(x, y, yc) + w_plate_t + 0.01);
     }
 if (PART == "wedge_plate")
@@ -609,3 +617,15 @@ if (PART == "padtest_set")
                     translate([(ix0 + x_open8) / 2, 0.01, ref_top - z_step - 12]) rotate([90, 0, 0])
                         linear_extrude(height = 0.6) mirror([1, 0, 0]) text(variants[k][0], size = 9, halign = "center", valign = "center");
                 }
+
+// ---------- Fit check: the cage (as printed, mirrored) bolted to the wedge ----------
+// screw axes lined up, cage screw panel on the wedge front face (screw centre point on the panel -> screw entry on the face)
+function panel_depth(h) = let(T = [pad_floor_depth + thin_t, tri_h], F = [ramp_end_depth, z_step]) T[0] + (F[0] - T[0]) * (h - T[1]) / (F[1] - T[1]);
+cage_screw_pt = [-(screw_xs[0] + screw_xs[1]) / 2, ref_front_to_floor - panel_depth(ref_top), 0];   // after the mirror
+w_s0 = [0, w_fy(w_screw_z), w_screw_z];
+// a point of the cage's side profile [depth from the front, height below the top] -> [y, z] in the wedge frame (cage bolted on)
+function cage2w(p) = let(y = ref_front_to_floor - p[0] - cage_screw_pt[1], z = ref_top - p[1])
+    [y * cos(w_screw_up) - z * sin(w_screw_up) + w_s0[1], y * sin(w_screw_up) + z * cos(w_screw_up) + w_s0[2]];
+module cage_on_wedge(c) translate(w_s0) rotate([w_screw_up, 0, 0]) translate(-cage_screw_pt) mirror([1, 0, 0]) cage(c);
+if (PART == "fit8") { color("orange") wedge(); color("cyan") cage_on_wedge(H8); }
+if (PART == "fit8_clash") intersection() { wedge(); cage_on_wedge(H8); }
