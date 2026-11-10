@@ -11,9 +11,10 @@
 //   "wedge"        - the helmet wedge (piece between the helmet and the cage), helmet side down
 //   "wedge_plate"  - just the wedge's domed base plate with its 4 holes (quick fit test on the helmet)
 //   "wedge_outline" - just a 4 mm rim of the part of the plate that sits in the recess + holes (quick fit check)
+//   "curve_gauges" - labelled strips with different curves, to measure the helmet in the recess (S = side to side, F = front to back)
 //   "fit8" / "fit8_clash" - cage8 bolted to the wedge (preview) / their overlap (should be empty)
 //   "helmet8" / "fit8_helmet" - the helmet shape implied by the wedge underside + cage pad / everything together (preview)
-PART = "wedge_outline";
+PART = "curve_gauges";
 
 $fn = 48;
 
@@ -450,7 +451,7 @@ w_slot_z = 7.2;  w_slot_d = 7.8;  w_slot_w = 7;
 function w_fy(z) = -z * tan(w_lean);     // front face y at height z
 // helmet dome under the plate (from the contour traces): ~140 mm radius side to side, ~105 mm front to back, 6 mm higher in the
 // centre of the recess than at the holes (measured on the original). z = 0 is the plate edges / holes, as when it sits on a table.
-w_dome_rx = 115;  w_dome_ry = 105;  w_dome_h = 6;   // rx was 140: the outline test rocked side to side (front-to-back fitted better)
+w_dome_rx = 140;  w_dome_ry = 105;  w_dome_h = 6;   // (115 side to side fitted worse than 140; measure with curve_gauges)
 // front toe: the flat front wall runs all the way down to the toe's tip; the toe's underside angles back up to that tip.
 // The tip is w_toe_reach in front of the front holes (measured 12.5). Under the toe the bottom is lifted w_toe_lift (to clear
 // the ridge at the front of the helmet's recess) for w_toe_flat, then slopes up at w_toe_slope until it meets the front wall.
@@ -609,6 +610,25 @@ module wedge_frame(rim = 8, cross = true, recess_only = false)
 if (PART == "wedge_plate")   wedge_frame();
 // outline only: a 4 mm rim (with the rounded corners and the 4 holes) to check the plate's shape in the helmet's pocket
 if (PART == "wedge_outline") wedge_frame(rim = 4, cross = false, recess_only = true);
+// ---------- Curve gauges: narrow strips with a circular underside, to measure the helmet's curve in the recess ----------
+// Lay each strip in the recess (curved side down, label up). The right radius sits flat: rocks on its middle = too flat
+// (radius too big), rocks on its ends / gap in the middle = too curved (radius too small).
+// "S" strips go side to side (try them across the front holes, the middle and the back holes); "F" strips go front to back.
+gauge_t = 2;   gauge_w = 6;
+gauge_side  = [120, 140, 160, 180];   gauge_side_l  = 64;   // side-to-side radii / strip length
+gauge_front = [90, 105, 120];         gauge_front_l = 50;   // front-to-back radii / strip length
+module curve_strip(R, L, label)
+    difference() {
+        translate([-L / 2, -gauge_w / 2, -20]) cube([L, gauge_w, 20 + gauge_t]);
+        translate([0, 0, -R]) rotate([90, 0, 0]) cylinder(r = R, h = gauge_w + 2, center = true, $fn = 720);
+        translate([L / 2 - 9, 0, gauge_t - 0.6]) linear_extrude(height = 1)
+            text(label, size = 3.2, font = "Liberation Sans:style=Bold", halign = "center", valign = "center");
+    }
+if (PART == "curve_gauges")
+    rotate([180, 0, 0]) translate([0, 0, -gauge_t]) {   // flat top on the bed
+        for (i = [0 : len(gauge_side) - 1])  translate([0, i * 10, 0]) curve_strip(gauge_side[i], gauge_side_l, str("S", gauge_side[i]));
+        for (i = [0 : len(gauge_front) - 1]) translate([0, (len(gauge_side) + i) * 10, 0]) curve_strip(gauge_front[i], gauge_front_l, str("F", gauge_front[i]));
+    }
 if (PART == "backplate8")   rotate([-90, 0, 0]) mirror([1, 0, 0]) backplate(H8);
 // ---------- Pad variants, for printing several fit tests at once ----------
 // amp  = S-shape along the pad: the upper part bulges toward the helmet by amp mm, the lower part pulls back by amp mm
