@@ -507,7 +507,7 @@ module wedge(fit_cage = true) {
     nut_s = w_screw_len - w_cage_wall - w_nut_t / 2 - w_nut_past;   // nut centre along the screw, from the front face
     yc = (yf_b + yb_b) / 2;                          // dome centre: middle of the hole pattern
     dome = function(x, y) w_dome(x, y, yc);
-    module outline() hull() {
+    module outline() round_corners() hull() {
         offset(r = w_bolt_d / 2 + w_bolt_edge) polygon(quad);
         translate([-w_block_w / 2, -1]) square([w_block_w, 1]);      // under the front block
     }
@@ -519,9 +519,12 @@ module wedge(fit_cage = true) {
                 rotate([90, 0, 90]) linear_extrude(height = w_block_w, center = true)
                     polygon([[w_fy(w_h - 1), w_h - 1], [w_fy(p1[1]), p1[1]], p2, [p2[0], w_h - 1]]);
             // flat, level washer seats on the rear holes: top is w_washer_h above the highest point of the plate around the seat
-            for (sx = [-1, 1]) let(hx = sx * w_bolt_dx_b / 2,
-                    ztop = max([for (a = [0 : 30 : 330]) dome(hx + w_washer_d / 2 * cos(a), yb_b + w_washer_d / 2 * sin(a))]) + w_plate_t + w_washer_h)
-                translate([hx, yb_b, dome(hx, yb_b) - 5]) cylinder(d = w_washer_d, h = ztop - dome(hx, yb_b) + 5, $fn = 32);
+            intersection() {   // (trimmed to the plate's rounded corners)
+                for (sx = [-1, 1]) let(hx = sx * w_bolt_dx_b / 2,
+                        ztop = max([for (a = [0 : 30 : 330]) dome(hx + w_washer_d / 2 * cos(a), yb_b + w_washer_d / 2 * sin(a))]) + w_plate_t + w_washer_h)
+                    translate([hx, yb_b, dome(hx, yb_b) - 5]) cylinder(d = w_washer_d, h = ztop - dome(hx, yb_b) + 5, $fn = 32);
+                translate([0, 0, -30]) linear_extrude(height = 70) outline();
+            }
             // base plate: a shell w_plate_t thick lying on the dome
             intersection() {
                 translate([0, 0, -30]) linear_extrude(height = 70) outline();      // (was clipping the low corners flat)
@@ -570,6 +573,10 @@ module wedge_plate_shell() let(yc = w_yf_b - w_bolt_dy / 2)
         wedge(false);
         heightfield(-50, 50, -w_plate_l - 10, 15, function(x, y) -30, function(x, y) w_dome(x, y, yc) + w_plate_t + 0.01);
     }
+// Plate corners: rounded with w_corner_r (bigger than the 4.35 round each hole), so the sides stay w_bolt_edge from the holes
+// but the corners carry less plastic: original ~1.9 from hole to corner; 2.6 all round printed ~3.1, so this errs a bit thinner.
+w_corner_r = 8;   // hole edge -> corner (diagonal) = (r - w_corner_r) * sqrt(2) + w_corner_r - hole radius ~ 1.1 in the model
+module round_corners() offset(r = w_corner_r, $fn = 64) offset(r = -w_corner_r) children();
 // The part of the plate that sits IN the recess (from the bottom up to the lifted toe's underside) is shaped like the back:
 // its outline runs w_bolt_edge round each hole, so its front corners are round, concentric(ish) with the front holes. The front
 // corner circles are moved back a little so the front edge is where the toe lift starts (2.4 from the hole edge, like the original).
@@ -580,12 +587,12 @@ module recess_corners() let(yc = w_yf_b - w_bolt_dy / 2, r = w_bolt_d / 2 + w_bo
     intersection() {
         translate([0, 0, -50]) linear_extrude(height = 100) difference() {
             square([200, 300], center = true);
-            offset(r = r, $fn = 48) polygon(w_quad(r - w_toe_lift_start));
+            round_corners() offset(r = r, $fn = 48) polygon(w_quad(r - w_toe_lift_start));
         }
         heightfield(-50, 50, -w_plate_l - 10, 15, function(x, y) -40, function(x, y) w_dome(x, y, yc) + w_toe_lift + 0.01);
     }
 // footprint of a test frame: the whole plate (with the toe), or just the part that sits in the recess
-module frame_footprint(recess_only) if (recess_only) let(r = w_bolt_d / 2 + w_bolt_edge) offset(r = r, $fn = 48) polygon(w_quad(r - w_toe_lift_start));
+module frame_footprint(recess_only) if (recess_only) let(r = w_bolt_d / 2 + w_bolt_edge) round_corners() offset(r = r, $fn = 48) polygon(w_quad(r - w_toe_lift_start));
     else hull() projection() wedge_plate_shell();
 module wedge_frame(rim = 8, cross = true, recess_only = false)
     let(yc = w_yf_b - w_bolt_dy / 2, q = w_quad(w_bolt_d / 2 + w_bolt_edge - w_toe_lift_start), yb_b = w_yf_b - w_bolt_dy, sx0 = w_bolt_dx_f / 2,
