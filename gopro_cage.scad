@@ -454,7 +454,8 @@ w_dome_rx = 140;  w_dome_ry = 105;  w_dome_h = 6;
 // front toe: the flat front wall runs all the way down to the toe's tip; the toe's underside angles back up to that tip.
 // The tip is w_toe_reach in front of the front holes (measured 12.5). Under the toe the bottom is lifted w_toe_lift (to clear
 // the ridge at the front of the helmet's recess) for w_toe_flat, then slopes up at w_toe_slope until it meets the front wall.
-w_toe_reach = 12.5;  w_toe_lift = 2.5;
+w_toe_reach = 12.5;
+w_toe_lift = 5.0;    // original's toe lifts ~4.5; our 2.5 printed ~2.0, so modelled 0.5 higher
 w_toe_tip_z = 4;     // height of the tip above the table (measured ~5 at the toe; ~4 is where these numbers meet)
 w_toe_lift_start = 3.7;   // the lifted part starts this far in front of the front hole centres = front edge of the part in the recess
                           // (original: 2.4 from the hole's edge; our 6.5 printed 5.2, so moved back 2.8)
