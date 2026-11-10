@@ -10,7 +10,7 @@
 //   "preview8" / "preview13" - cage + red dummy together (use a cross-section view to inspect)
 //   "wedge"        - the helmet wedge (piece between the helmet and the cage), helmet side down
 //   "wedge_plate"  - just the wedge's domed base plate with its 4 holes (quick fit test on the helmet)
-//   "wedge_outline" - just a 4 mm rim of the wedge plate outline + holes (quick check of the corners in the pocket)
+//   "wedge_outline" - just a 4 mm rim of the part of the plate that sits in the recess + holes (quick fit check)
 //   "fit8" / "fit8_clash" - cage8 bolted to the wedge (preview) / their overlap (should be empty)
 //   "helmet8" / "fit8_helmet" - the helmet shape implied by the wedge underside + cage pad / everything together (preview)
 PART = "wedge_outline";
@@ -581,16 +581,20 @@ module recess_corners() let(yc = w_yf_b - w_bolt_dy / 2, r = w_bolt_d / 2 + w_bo
         }
         heightfield(-50, 50, -w_plate_l - 10, 15, function(x, y) -40, function(x, y) w_dome(x, y, yc) + w_toe_lift + 0.01);
     }
-module wedge_frame(rim = 8, cross = true)
-    let(yc = w_yf_b - w_bolt_dy / 2, yb_b = w_yf_b - w_bolt_dy, sx0 = w_bolt_dx_f / 2,
+// footprint of a test frame: the whole plate (with the toe), or just the part that sits in the recess
+module frame_footprint(recess_only) if (recess_only) let(r = w_bolt_d / 2 + w_bolt_edge) offset(r = r, $fn = 48) polygon(w_quad(r - w_toe_lift_start));
+    else hull() projection() wedge_plate_shell();
+module wedge_frame(rim = 8, cross = true, recess_only = false)
+    let(yc = w_yf_b - w_bolt_dy / 2, q = w_quad(w_bolt_d / 2 + w_bolt_edge - w_toe_lift_start), yb_b = w_yf_b - w_bolt_dy, sx0 = w_bolt_dx_f / 2,
         holes = [[-sx0, w_yf_b], [sx0, w_yf_b], [-w_bolt_dx_b / 2, yb_b], [w_bolt_dx_b / 2, yb_b]],
-        ztop = w_dome_h + w_test_t, y0 = w_yf_b + w_toe_lift_start)
+        // flat top: w_test_t above the highest point of the underside the frame covers
+        ztop = (recess_only ? max(w_dome(0, q[0][1], yc), w_dome(0, q[2][1], yc)) : w_dome_h) + w_test_t, y0 = w_yf_b + w_toe_lift_start)
     translate([0, 0, ztop]) rotate([180, 0, 0])
         difference() {
             translate([0, 0, -30]) linear_extrude(height = 30 + ztop) intersection() {
-                hull() projection() wedge_plate_shell();
+                frame_footprint(recess_only);
                 union() {
-                    difference() { hull() projection() wedge_plate_shell(); offset(r = -rim) hull() projection() wedge_plate_shell(); }
+                    difference() { frame_footprint(recess_only); offset(r = -rim) frame_footprint(recess_only); }
                     if (cross) { translate([-4, -100]) square([8, 200]); translate([-100, yc - 4]) square([200, 8]); }
                     for (p = holes) translate(p) circle(d = 11, $fn = 32);
                 }
@@ -604,7 +608,7 @@ module wedge_frame(rim = 8, cross = true)
         }
 if (PART == "wedge_plate")   wedge_frame();
 // outline only: a 4 mm rim (with the rounded corners and the 4 holes) to check the plate's shape in the helmet's pocket
-if (PART == "wedge_outline") wedge_frame(rim = 4, cross = false);
+if (PART == "wedge_outline") wedge_frame(rim = 4, cross = false, recess_only = true);
 if (PART == "backplate8")   rotate([-90, 0, 0]) mirror([1, 0, 0]) backplate(H8);
 // ---------- Pad variants, for printing several fit tests at once ----------
 // amp  = S-shape along the pad: the upper part bulges toward the helmet by amp mm, the lower part pulls back by amp mm
