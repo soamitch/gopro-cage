@@ -456,8 +456,9 @@ w_dome_rx = 140;  w_dome_ry = 105;  w_dome_h = 6;
 // the ridge at the front of the helmet's recess) for w_toe_flat, then slopes up at w_toe_slope until it meets the front wall.
 w_toe_reach = 12.5;  w_toe_lift = 2.5;
 w_toe_tip_z = 4;     // height of the tip above the table (measured ~5 at the toe; ~4 is where these numbers meet)
-w_toe_lift_start = 6.5;   // the lifted part starts this far in front of the front holes (contour trace)
-w_toe_flat = 4;      // lifted, flat part of the underside (measured)
+w_toe_lift_start = 3.7;   // the lifted part starts this far in front of the front hole centres = front edge of the part in the recess
+                          // (original: 2.4 from the hole's edge; our 6.5 printed 5.2, so moved back 2.8)
+w_toe_flat = 10.5 - w_toe_lift_start;   // lifted, flat part of the underside; ends where it did before (4 measured from the old start)
 w_toe_slope = 45;    // underside slope up to the tip (GUESS)
 w_yf_b = w_fy(w_toe_tip_z) - w_toe_reach;   // front holes, y (front wall foot at y = 0)
 w_plate_l = -(w_yf_b - w_bolt_dy) + w_bolt_d / 2 + w_bolt_edge;   // wall foot to back edge, set by the holes (~64)
