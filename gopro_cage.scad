@@ -542,15 +542,34 @@ module wedge() {
 }
 
 if (PART == "wedge")        wedge();
-// fit test for the dome: just the base plate (shell + holes), without the front block
+// fit test for the dome: an open frame with the true helmet-side surface, printed FLAT TOP DOWN (no supports): an 8 mm rim, a
+// cross through the middle and rings round the 4 holes. Top is flat, w_test_t above the highest point of the helmet surface.
+w_test_t = 1.5;
+module wedge_plate_shell() let(yc = w_yf_b - w_bolt_dy / 2)
+    intersection() {
+        wedge();
+        heightfield(-50, 50, -w_plate_l - 10, 15, function(x, y) -30, function(x, y) w_dome(x, y, yc) + w_plate_t + 0.01);
+    }
 if (PART == "wedge_plate")
-    let(yc = w_fy(w_slot_z) - w_bolt_front - w_bolt_dy / 2)
-        intersection() {
-            wedge();
-            union() {
-                heightfield(-50, 50, -w_plate_l - 10, 10, function(x, y) -30, function(x, y) w_dome(x, y, yc) + w_plate_t + 0.01);
-                for (sx = [-1, 1]) translate([sx * w_bolt_dx_b / 2, yc - w_bolt_dy / 2, -30]) cylinder(d = w_washer_d + 2, h = 60);   // keep the seats
+    let(yc = w_yf_b - w_bolt_dy / 2, yb_b = w_yf_b - w_bolt_dy, sx0 = w_bolt_dx_f / 2,
+        holes = [[-sx0, w_yf_b], [sx0, w_yf_b], [-w_bolt_dx_b / 2, yb_b], [w_bolt_dx_b / 2, yb_b]],
+        ztop = w_dome_h + w_test_t, y0 = w_yf_b + w_toe_lift_start)
+    translate([0, 0, ztop]) rotate([180, 0, 0])
+        difference() {
+            translate([0, 0, -30]) linear_extrude(height = 30 + ztop) intersection() {
+                hull() projection() wedge_plate_shell();
+                union() {
+                    difference() { hull() projection() wedge_plate_shell(); offset(r = -8) hull() projection() wedge_plate_shell(); }
+                    translate([-4, -100]) square([8, 200]);
+                    translate([-100, yc - 4]) square([200, 8]);
+                    for (p = holes) translate(p) circle(d = 11, $fn = 32);
+                }
             }
+            // helmet side: the dome, and the lifted toe at the front
+            heightfield(-50, 50, -w_plate_l - 10, 15, function(x, y) -40, function(x, y) w_dome(x, y, yc));
+            heightfield(-50, 50, y0, 15, function(x, y) -40,
+                function(x, y) w_dome(x, y, yc) + w_toe_lift * min(1, (y - y0) / 0.5) + max(0, y - y0 - w_toe_flat) * tan(w_toe_slope), 60);
+            for (p = holes) translate([p[0], p[1], -50]) cylinder(d = w_bolt_d, h = 100, $fn = 24);
         }
 if (PART == "backplate8")   rotate([-90, 0, 0]) mirror([1, 0, 0]) backplate(H8);
 // ---------- Pad variants, for printing several fit tests at once ----------
