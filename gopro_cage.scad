@@ -482,8 +482,6 @@ module heightfield(x0, x1, y0, y1, lo, hi, n = 40) {
         [for (j = [0 : n - 1]) [j*(n+1)+n, (j+1)*(n+1)+n, N+(j+1)*(n+1)+n, N+j*(n+1)+n]]);
     polyhedron(pts, faces);
 }
-w_recess_r = 6;    // the part of the plate that sits IN the recess (below the lifted toe) has its front corners rounded with this
-                   // radius, to match the recess's rounded inside corners (GUESS)
 w_front_r = 6;     // front corners rounded in plan view (all the way up) to fit the rounded corners of the helmet's pocket (GUESS)
 w_tab_gap = 0.2;   // gap left under the cage's top tab (the screw panel on the front face is the seat)
 module wedge(fit_cage = true) {
@@ -569,11 +567,18 @@ module wedge_plate_shell() let(yc = w_yf_b - w_bolt_dy / 2)
         wedge(false);
         heightfield(-50, 50, -w_plate_l - 10, 15, function(x, y) -30, function(x, y) w_dome(x, y, yc) + w_plate_t + 0.01);
     }
-// corners to cut off the part of the plate that sits in the recess (from the bottom up to the lifted toe's underside)
-module recess_corners() let(yc = w_yf_b - w_bolt_dy / 2, y0 = w_yf_b + w_toe_lift_start)
+// The part of the plate that sits IN the recess (from the bottom up to the lifted toe's underside) is shaped like the back:
+// its outline runs w_bolt_edge round each hole, so its front corners are round, concentric(ish) with the front holes. The front
+// corner circles are moved back a little so the front edge is where the toe lift starts (2.4 from the hole edge, like the original).
+function w_quad(front_back = 0) = let(sx0 = w_bolt_dx_f / 2, yf_b = w_yf_b - front_back, yb_b = w_yf_b - w_bolt_dy,
+        e = (-w_plate_l + w_bolt_d / 2 + w_bolt_edge) - yb_b, kx = (w_bolt_dx_b - w_bolt_dx_f) / 2 / w_bolt_dy)
+    [[-sx0, yf_b], [sx0, yf_b], [w_bolt_dx_b / 2 - kx * e, yb_b + e], [-w_bolt_dx_b / 2 + kx * e, yb_b + e]];
+module recess_corners() let(yc = w_yf_b - w_bolt_dy / 2, r = w_bolt_d / 2 + w_bolt_edge)
     intersection() {
-        for (m = [0, 1]) mirror([m, 0, 0]) translate([w_block_w / 2 - w_recess_r, y0 - w_recess_r, -50])
-            linear_extrude(height = 100) difference() { square([w_recess_r + 20, w_recess_r + 20]); circle(r = w_recess_r, $fn = 48); }
+        translate([0, 0, -50]) linear_extrude(height = 100) difference() {
+            square([200, 300], center = true);
+            offset(r = r, $fn = 48) polygon(w_quad(r - w_toe_lift_start));
+        }
         heightfield(-50, 50, -w_plate_l - 10, 15, function(x, y) -40, function(x, y) w_dome(x, y, yc) + w_toe_lift + 0.01);
     }
 module wedge_frame(rim = 8, cross = true)
