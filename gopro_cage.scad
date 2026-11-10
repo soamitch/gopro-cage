@@ -533,9 +533,10 @@ module wedge() {
         // cage screw channels + nut pockets (nut inserted from the helmet side)
         for (sx = [-1, 1]) translate([sx * w_screw_dx / 2, 0, 0]) {
             translate(s0 - 2 * dir) rotate([-(90 - w_screw_up), 0, 0]) rotate([180, 0, 0]) cylinder(d = w_screw_d, h = 2 + w_screw_len - w_cage_wall + 1.5, $fn = 24);
-            hull() for (dz = [0, -30])
-                translate(s0 + nut_s * dir + [0, 0, dz]) rotate([90 + w_screw_up, 0, 0])
-                    cylinder(d = w_nut_af / cos(30), h = w_nut_t, center = true, $fn = 6);
+            // nut pocket: a hex tunnel along the screw axis, from the nut's front face out through the bottom, so the nyloc
+            // slides in from below square to the screw (points of the hex front/back, like the original)
+            translate(s0 + (nut_s - w_nut_t / 2) * dir) rotate([90 + w_screw_up, 0, 0]) rotate([0, 0, 90])
+                cylinder(d = w_nut_af / cos(30), h = 60, $fn = 6);
         }
     }
 }
