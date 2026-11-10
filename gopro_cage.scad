@@ -480,6 +480,8 @@ module heightfield(x0, x1, y0, y1, lo, hi, n = 40) {
         [for (j = [0 : n - 1]) [j*(n+1)+n, (j+1)*(n+1)+n, N+(j+1)*(n+1)+n, N+j*(n+1)+n]]);
     polyhedron(pts, faces);
 }
+w_recess_r = 6;    // the part of the plate that sits IN the recess (below the lifted toe) has its front corners rounded with this
+                   // radius, to match the recess's rounded inside corners (GUESS)
 w_front_r = 6;     // front corners rounded in plan view (all the way up) to fit the rounded corners of the helmet's pocket (GUESS)
 w_tab_gap = 0.2;   // gap left under the cage's top tab (the screw panel on the front face is the seat)
 module wedge(fit_cage = true) {
@@ -528,6 +530,7 @@ module wedge(fit_cage = true) {
         // round the two front corners (plan view)
         for (m = [0, 1]) mirror([m, 0, 0]) translate([w_block_w / 2 - w_front_r, w_fy(w_toe_tip_z) - w_front_r, -50])   // from the toe tip (the front edge)
             linear_extrude(height = 100) difference() { square([w_front_r + 20, w_front_r + 20]); circle(r = w_front_r, $fn = 48); }
+        recess_corners();
         // the dome under the plate
         heightfield(-50, 50, -w_plate_l - 10, 10, function(x, y) -30, function(x, y) dome(x, y));
         // under the toe: lifted w_toe_lift, flat for w_toe_flat, then sloping up to meet the front wall at the tip
@@ -564,6 +567,13 @@ module wedge_plate_shell() let(yc = w_yf_b - w_bolt_dy / 2)
         wedge(false);
         heightfield(-50, 50, -w_plate_l - 10, 15, function(x, y) -30, function(x, y) w_dome(x, y, yc) + w_plate_t + 0.01);
     }
+// corners to cut off the part of the plate that sits in the recess (from the bottom up to the lifted toe's underside)
+module recess_corners() let(yc = w_yf_b - w_bolt_dy / 2, y0 = w_yf_b + w_toe_lift_start)
+    intersection() {
+        for (m = [0, 1]) mirror([m, 0, 0]) translate([w_block_w / 2 - w_recess_r, y0 - w_recess_r, -50])
+            linear_extrude(height = 100) difference() { square([w_recess_r + 20, w_recess_r + 20]); circle(r = w_recess_r, $fn = 48); }
+        heightfield(-50, 50, -w_plate_l - 10, 15, function(x, y) -40, function(x, y) w_dome(x, y, yc) + w_toe_lift + 0.01);
+    }
 module wedge_frame(rim = 8, cross = true)
     let(yc = w_yf_b - w_bolt_dy / 2, yb_b = w_yf_b - w_bolt_dy, sx0 = w_bolt_dx_f / 2,
         holes = [[-sx0, w_yf_b], [sx0, w_yf_b], [-w_bolt_dx_b / 2, yb_b], [w_bolt_dx_b / 2, yb_b]],
@@ -583,6 +593,7 @@ module wedge_frame(rim = 8, cross = true)
             heightfield(-50, 50, y0, 15, function(x, y) -40,
                 function(x, y) w_dome(x, y, yc) + w_toe_lift * min(1, (y - y0) / 0.5) + max(0, y - y0 - w_toe_flat) * tan(w_toe_slope), 60);
             for (p = holes) translate([p[0], p[1], -50]) cylinder(d = w_bolt_d, h = 100, $fn = 24);
+            recess_corners();
         }
 if (PART == "wedge_plate")   wedge_frame();
 // outline only: a 4 mm rim (with the rounded corners and the 4 holes) to check the plate's shape in the helmet's pocket
