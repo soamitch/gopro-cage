@@ -450,7 +450,7 @@ w_slot_z = 7.2;  w_slot_d = 7.8;  w_slot_w = 7;
 function w_fy(z) = -z * tan(w_lean);     // front face y at height z
 // helmet dome under the plate (from the contour traces): ~140 mm radius side to side, ~105 mm front to back, 6 mm higher in the
 // centre of the recess than at the holes (measured on the original). z = 0 is the plate edges / holes, as when it sits on a table.
-w_dome_rx = 140;  w_dome_ry = 105;  w_dome_h = 6;
+w_dome_rx = 115;  w_dome_ry = 105;  w_dome_h = 6;   // rx was 140: the outline test rocked side to side (front-to-back fitted better)
 // front toe: the flat front wall runs all the way down to the toe's tip; the toe's underside angles back up to that tip.
 // The tip is w_toe_reach in front of the front holes (measured 12.5). Under the toe the bottom is lifted w_toe_lift (to clear
 // the ridge at the front of the helmet's recess) for w_toe_flat, then slopes up at w_toe_slope until it meets the front wall.
