@@ -702,6 +702,8 @@ np_roof  = 1.2;              // over the nut, against the helmet (at the thinnes
 np_boss_af = 9.5;            // hex bosses round the nuts
 np_bar_w = 4.5;  np_bar_t = 3;     // frame bars, following the inside of the shell
 np_hole = 3.5;               // M3 clearance
+np_membrane = 0.4;           // sacrificial skin over each bolt hole on the head side (2 layers): stops supports growing up
+                             // into the nut pockets from the bed; the bolt pushes through it (or poke it with a 3 mm drill)
 np_pause_z = np_floor + np_nut_h;  // PAUSE here (height above the bed): the first layer printed above it covers the nuts
 module nutplate() let(
         yf = w_yf_b, yb = w_yf_b - w_bolt_dy, yc = (yf + yb) / 2,
@@ -725,7 +727,7 @@ module nutplate() let(
             }
         }
         for (p = holes) {
-            translate([p[0], p[1], z0 - 1]) cylinder(d = np_hole, h = 40, $fn = 24);
+            translate([p[0], p[1], z0 + np_membrane]) cylinder(d = np_hole, h = 40, $fn = 24);   // (thin skin left at the bed)
             translate([p[0], p[1], z0 + np_floor]) cylinder(d = np_nut_af / cos(30), h = np_nut_h, $fn = 6);
         }
     }
