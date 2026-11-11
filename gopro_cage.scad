@@ -16,7 +16,7 @@
 //   "nutplate"     - the plate inside the helmet that holds the 4 M3 nylocs (pause-and-insert, see np_pause_z)
 //   "fit8_sec"    - a 1 mm slice through cage8 bolted to the wedge at x = fit_sec_x (side view of the contact)
 //   "helmet8" / "fit8_helmet" - the helmet shape implied by the wedge underside + cage pad / everything together (preview)
-PART = "nutplate";
+PART = "wedge";
 
 $fn = 48;
 
@@ -429,6 +429,11 @@ module backplate(c) intersection() { cage(c); translate([-200, -200, -200]) cube
 // Printed as is: helmet side on the bed.
 w_plate_w = 73;    w_plate_t = 4.4;   w_plate_r = 3;   // base plate (measured w / l / thickness; corner radius guessed)
 w_block_w = 69.7;           // width of the raised front part (measured)
+// upper front widened to the widest cage's back (Hero 13 cage: 74.5) so its whole back is supported. Starts w_widen_z above
+// the plate (clear of the toe, the recess and the helmet ridge), tapers out at 45 deg, and is only w_widen_d deep (y).
+w_top_w   = max(H8[0], H13[0]) + clear + wall_l - overhang;
+w_widen_z = 8;
+w_widen_d = 8;
 w_h       = 22.3;           // height at the front (measured 22.2-22.3)
 w_lean    = 20;             // front wall leans back from vertical (measured: 110 deg to the table)
 w_top_l   = 17;             // flat top, front to back (measured)
@@ -522,9 +527,16 @@ module wedge(fit_cage = true) {
     difference() {
         union() {
             rotate([90, 0, 90]) linear_extrude(height = w_block_w, center = true) polygon(prof);
+            // widened upper front (a slab behind the front face), 45-degree taper out from w_block_w
+            if (w_top_w > w_block_w) let(dz = (w_top_w - w_block_w) / 2,
+                    slab = function(z0) [[w_fy(z0), z0], [w_fy(w_h), w_h], [w_fy(w_h) - w_widen_d, w_h], [w_fy(z0) - w_widen_d, z0]])
+                hull() {
+                    rotate([90, 0, 90]) linear_extrude(height = w_block_w, center = true) polygon(slab(w_widen_z));
+                    rotate([90, 0, 90]) linear_extrude(height = w_top_w, center = true) polygon(slab(w_widen_z + dz));
+                }
             // top raised to sit under the cage's top tab (w_tab_gap below it)
             if (fit_cage) let(p1 = cage2w([pad_floor_depth + thin_t, tri_h]) - [0, w_tab_gap], p2 = cage2w(tab_tip) - [0, w_tab_gap])
-                rotate([90, 0, 90]) linear_extrude(height = w_block_w, center = true)
+                rotate([90, 0, 90]) linear_extrude(height = max(w_block_w, w_top_w), center = true)
                     polygon([[w_fy(w_h - 1), w_h - 1], [w_fy(p1[1]), p1[1]], p2, [p2[0], w_h - 1]]);
             // flat, level washer seats on the rear holes: top is w_washer_h above the highest point of the plate around the seat
             intersection() {   // (trimmed to the plate's rounded corners)
@@ -552,7 +564,7 @@ module wedge(fit_cage = true) {
             heightfield(-50, 50, y0, 15, function(x, y) -30,
                 function(x, y) dome(x, y) + w_toe_lift * min(1, (y - y0) / 0.5) + max(0, y - y0 - w_toe_flat) * tan(w_toe_slope), 60);
         // side slots (open to the side), one over each front bolt
-        for (sx = [-1, 1]) let(x_in = sx0 - w_slot_w / 2, len = w_plate_w / 2 + 1 - x_in)
+        for (sx = [-1, 1]) let(x_in = sx0 - w_slot_w / 2, len = max(w_plate_w, w_top_w) / 2 + 2 - x_in)
             translate([sx > 0 ? x_in : -x_in - len, 0, 0]) {
                 rotate([90, 0, 90]) linear_extrude(height = len) polygon(slot);
                 // straight-down access from the top to the bolt head (hex key), as on the original. Its back wall comes to a
