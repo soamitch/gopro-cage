@@ -690,40 +690,43 @@ if (PART == "padtest_set")
                 }
 
 // ---------- Nut plate: holds the four M3 nylocs inside the helmet, under the wedge's bolts ----------
-// Flat on the wearer side (prints flat, no supports); the four hex bosses reach up to the helmet's inside surface and
-// carry the nuts, so the bars between them stand off the (domed) inside of the shell instead of following it.
-// Nuts go in during a PAUSE: print to the top of the nut pockets, drop an M3 nyloc into each (nylon ring DOWN, toward the
-// bed), resume - the roof prints over the nuts and seals them in. The bolts come in from the helmet side (top of the print).
+// Follows the helmet's inside surface like the original: the bars (rim + X) are np_bar_t thick against the shell, and a hex
+// boss hangs down at each hole round its nut. The four nut pockets are all at the same height, so one PAUSE seals all of them.
+// Print it as modelled: helmet side up, resting on the flat bottoms of the four bosses, with (tree) supports under the bars.
+// At the pause drop an M3 nyloc into each pocket, nylon ring DOWN (toward the bed); the bolts come in from the top (helmet side).
 np_shell_t = 4;              // helmet shell thickness at the holes (GUESS - measure it: depth of a bolt hole)
 np_nut_af = 5.5 + 0.3;       // M3 nyloc: 5.5 across flats + clearance
 np_nut_h  = 4.0 + 0.2;       // M3 nyloc: 4 mm tall + a little, so the roof lands on the nut
-np_floor = 1.0;              // under the nut (wearer side); the bolt hole goes through, so any bolt length works
-np_roof  = 1.2;              // over the nut, against the helmet
+np_floor = 1.0;              // under the nut (head side); the bolt hole goes through, so any bolt length works
+np_roof  = 1.2;              // over the nut, against the helmet (at the thinnest boss)
 np_boss_af = 9.5;            // hex bosses round the nuts
-np_bar_w = 4.5;  np_bar_t = 2.4;   // the frame bars (rim + X), on the flat side
+np_bar_w = 4.5;  np_bar_t = 3;     // frame bars, following the inside of the shell
 np_hole = 3.5;               // M3 clearance
-np_pause_z = np_floor + np_nut_h;  // PAUSE here: the first layer printed above this height covers the nuts
+np_pause_z = np_floor + np_nut_h;  // PAUSE here (height above the bed): the first layer printed above it covers the nuts
 module nutplate() let(
         yf = w_yf_b, yb = w_yf_b - w_bolt_dy, yc = (yf + yb) / 2,
         rxi = w_dome_rx - np_shell_t, ryi = w_dome_ry - np_shell_t,
         si = function(x, y) w_dome_h - np_shell_t - x * x / (2 * rxi) - (y - yc) * (y - yc) / (2 * ryi),   // helmet's inside surface
         holes = [[-w_bolt_dx_f / 2, yf], [w_bolt_dx_f / 2, yf], [w_bolt_dx_b / 2, yb], [-w_bolt_dx_b / 2, yb]],
-        bh = np_floor + np_nut_h + np_roof,                     // boss height at each hole centre
-        zf = si(w_bolt_dx_f / 2, yf) - bh, zb = si(w_bolt_dx_b / 2, yb) - bh,
-        pz = function(y) zf + (y - yf) * (zb - zf) / (yb - yf),  // flat (wearer-side) plane through the four boss bottoms
-        top = function(x, y) si(x, y) - pz(y))                  // inside surface, measured up from that plane
-    difference() {
+        ptop = min([for (p = holes) si(p[0], p[1])]) - np_roof,     // all pocket tops at one height
+        z0 = ptop - np_nut_h - np_floor)                           // flat bottom of the bosses (the bed)
+    translate([0, 0, -z0]) difference() {
         union() {
-            linear_extrude(height = np_bar_t)
-                for (e = [[0, 1], [1, 2], [2, 3], [3, 0], [0, 2], [1, 3]]) hull() for (i = e) translate(holes[i]) circle(d = np_bar_w, $fn = 24);
+            // bars: a band np_bar_t thick under the inside surface
             intersection() {
-                for (p = holes) translate([p[0], p[1], 0]) cylinder(d = np_boss_af / cos(30), h = bh + 4, $fn = 6);
-                heightfield(-45, 45, yb - 10, yf + 10, function(x, y) -1, top, 30);
+                translate([0, 0, z0 - 1]) linear_extrude(height = 40)
+                    for (e = [[0, 1], [1, 2], [2, 3], [3, 0], [0, 2], [1, 3]]) hull() for (i = e) translate(holes[i]) circle(d = np_bar_w, $fn = 24);
+                heightfield(-45, 45, yb - 10, yf + 10, function(x, y) si(x, y) - np_bar_t, si, 40);
+            }
+            // bosses: from the flat bottom up to the inside surface
+            intersection() {
+                for (p = holes) translate([p[0], p[1], z0]) cylinder(d = np_boss_af / cos(30), h = 30, $fn = 6);
+                heightfield(-45, 45, yb - 10, yf + 10, function(x, y) z0 - 1, si, 30);
             }
         }
         for (p = holes) {
-            translate([p[0], p[1], -1]) cylinder(d = np_hole, h = bh + 6, $fn = 24);
-            translate([p[0], p[1], np_floor]) cylinder(d = np_nut_af / cos(30), h = np_nut_h, $fn = 6);
+            translate([p[0], p[1], z0 - 1]) cylinder(d = np_hole, h = 40, $fn = 24);
+            translate([p[0], p[1], z0 + np_floor]) cylinder(d = np_nut_af / cos(30), h = np_nut_h, $fn = 6);
         }
     }
 if (PART == "nutplate") { nutplate(); echo(str("nutplate: add a PAUSE at the first layer above ", np_pause_z, " mm")); }
