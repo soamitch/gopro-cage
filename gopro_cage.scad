@@ -15,7 +15,7 @@
 //   "fit8" / "fit8_clash" - cage8 bolted to the wedge (preview) / their overlap (should be empty)
 //   "fit8_sec"    - a 1 mm slice through cage8 bolted to the wedge at x = fit_sec_x (side view of the contact)
 //   "helmet8" / "fit8_helmet" - the helmet shape implied by the wedge underside + cage pad / everything together (preview)
-PART = "wedge";
+PART = "cage8";
 
 $fn = 48;
 
@@ -62,17 +62,18 @@ lw_z0 = 8;  lw_z1 = 8;  lw_y0 = 4;  lw_y1 = 6;
 
 // elastic (hair tie) slot: a round hole (measured on the original) running along X through the back wall, just behind the
 // pocket floor; at the open side the floor over the hole is cut away (hole width) so the tie touches the camera there.
-cord_slot_w = 3;     // hole diameter (measured: 3 mm round)
-cord_slot_t = 3;     // (same: round)
+cord_slot_w = 6;     // slot height (the original's hole is 3 mm round; made taller so the hair tie threads easily)
+cord_slot_t = 3;     // slot thickness (as the original: keeps the same plastic behind it)
 cord_floor = 1.3;    // thinnest plastic between the pocket floor and the hole (measured 1.3)
 cord_y = -(cord_floor + cord_slot_t / 2);   // hole centre, behind the pocket floor (y = 0 is the floor)
-cord_edge_from_top = 38.7;   // top face of the cage to the hole's top edge (measured on the original); fixed to the mount
+cord_edge_from_top = 38.7 - (cord_slot_w - 3);   // top edge: the original's 3 mm hole had its top edge 38.7 from the top;
+                             // the taller slot keeps that hole's BOTTOM edge and grows upward (lower down the pad is too thin)
 cord_from_top = cord_edge_from_top + cord_slot_w / 2;   // ... to the hole centre
 cord_notch_l = 3;    // open-side cutout: no plastic between the hole and the camera for this far in from the open side (measured ~3)
 cord_wall = 0.8;     // minimum plastic kept between the hole and the pad surface
 // elastic hook: a small block on the front face at the open end, bottom corner, with a channel along X that is OPEN at the
 // bottom (drop the tie in from below)
-hook_x_len = 17.6;  hook_out = 7.6;  hook_h = 4;  hook_r = 1.5;  hook_chamfer = 1.5;   // hook height (its top is flush with the bottom of the lens window); hook_r rounds its edges
+hook_x_len = 17.6;  hook_out = 5.4;  hook_h = 4;  hook_r = 1.5;  hook_chamfer = 1.5;   // hook height (its top is flush with the bottom of the lens window); hook_r rounds its edges
 rec_d = 1.5;        // depth of the hair-tie recess in the front face (the front wall is 2.5 mm)
 // engraving: front face (below the hair-tie recess) and top face (beside the shutter-button window)
 engrave_lines = ["Skydive Kapowsin"];   // front face, one entry per line
@@ -370,6 +371,11 @@ module cage(c) {
         translate([ox0 - 1, lw_y0, pz0 + lw_z0]) cube([wall_l + 2, pd - lw_y0 - lw_y1, (pz1 - pz0) - lw_z0 - lw_z1]);
         // elastic cord hole through the back wall, with a notch around the opening on the open side
         translate([ox0 - 1, cord_y, ref_top - cord_from_top]) stadium_x(cord_slot_w, cord_slot_t, xo - ox0 + 12);
+        // flared entry on the closed side (taller at the outside face) so the tie finds the slot
+        hull() {
+            translate([ox0 - 1, cord_y, ref_top - cord_from_top]) stadium_x(cord_slot_w + 2, cord_slot_t, 1.01);
+            translate([ox0 + 1.2, cord_y, ref_top - cord_from_top]) stadium_x(cord_slot_w, cord_slot_t, 0.01);
+        }
         translate([xo - cord_notch_l, cord_y, ref_top - cord_from_top - cord_slot_w / 2])
             cube([cord_notch_l + 10, -cord_y + 1, cord_slot_w]);
         // channel of the elastic hook: its floor is the recess floor (rec_d into the front face), it runs out through the left end of
