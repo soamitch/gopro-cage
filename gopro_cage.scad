@@ -548,8 +548,12 @@ module wedge(fit_cage = true) {
         for (sx = [-1, 1]) let(x_in = sx0 - w_slot_w / 2, len = w_plate_w / 2 + 1 - x_in)
             translate([sx > 0 ? x_in : -x_in - len, 0, 0]) {
                 rotate([90, 0, 90]) linear_extrude(height = len) polygon(slot);
-                // straight-down access from the top to the bolt head (hex key), as on the original
-                translate([0, yf_b - w_slot_w / 2, w_slot_z]) cube([len, w_slot_w, w_h + 5]);
+                // straight-down access from the top to the bolt head (hex key), as on the original. Its back wall comes to a
+                // 45-degree point (teardrop) so it isn't a flat ceiling when the wedge is printed standing on its front face.
+                hull() {
+                    translate([0, yf_b - w_slot_w / 2, w_slot_z]) cube([len, w_slot_w, w_h + 5]);
+                    translate([len / 2, yf_b - w_slot_w / 2 - len / 2, w_slot_z]) cylinder(d = 0.01, h = w_h + 5, $fn = 4);
+                }
             }
         // helmet bolt holes
         for (p = [[-sx0, yf_b], [sx0, yf_b], [-w_bolt_dx_b / 2, yb_b], [w_bolt_dx_b / 2, yb_b]])
