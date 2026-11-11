@@ -694,7 +694,7 @@ if (PART == "padtest_set")
 // boss hangs down at each hole round its nut. The four nut pockets are all at the same height, so one PAUSE seals all of them.
 // Print it as modelled: helmet side up, resting on the flat bottoms of the four bosses, with (tree) supports under the bars.
 // At the pause drop an M3 nyloc into each pocket, nylon ring DOWN (toward the bed); the bolts come in from the top (helmet side).
-np_shell_t = 4;              // helmet shell thickness at the holes (GUESS - measure it: depth of a bolt hole)
+np_shell_t = 4;              // helmet shell thickness at the holes (measured: 4)
 np_nut_af = 5.5 + 0.3;       // M3 nyloc: 5.5 across flats + clearance
 np_nut_h  = 4.0 + 0.2;       // M3 nyloc: 4 mm tall + a little, so the roof lands on the nut
 np_floor = 1.0;              // under the nut (head side); the bolt hole goes through, so any bolt length works
