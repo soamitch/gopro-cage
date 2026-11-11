@@ -13,8 +13,9 @@
 //   "wedge_outline" - just a 4 mm rim of the part of the plate that sits in the recess + holes (quick fit check)
 //   "curve_gauges" - labelled strips with different curves, to measure the helmet in the recess (S = side to side, F = front to back)
 //   "fit8" / "fit8_clash" - cage8 bolted to the wedge (preview) / their overlap (should be empty)
+//   "fit8_sec"    - a 1 mm slice through cage8 bolted to the wedge at x = fit_sec_x (side view of the contact)
 //   "helmet8" / "fit8_helmet" - the helmet shape implied by the wedge underside + cage pad / everything together (preview)
-PART = "wedge_outline";
+PART = "wedge";
 
 $fn = 48;
 
@@ -688,6 +689,12 @@ function cage2w(p) = let(y = ref_front_to_floor - p[0] - cage_screw_pt[1], z = r
 module cage_on_wedge(c) translate(w_s0) rotate([w_screw_up, 0, 0]) translate(-cage_screw_pt) mirror([1, 0, 0]) cage(c);
 if (PART == "fit8") { color("orange") wedge(); color("cyan") cage_on_wedge(H8); }
 if (PART == "fit8_clash") intersection() { wedge(); cage_on_wedge(H8); }
+// thin slice through the cage-on-wedge assembly at x = fit_sec_x (side view shows the contact line)
+fit_sec_x = 8;       // between the screws
+if (PART == "fit8_sec") {
+    color("orange") intersection() { wedge(); translate([fit_sec_x - 0.5, -100, -100]) cube([1, 200, 200]); }
+    color("cyan") intersection() { cage_on_wedge(H8); translate([fit_sec_x - 0.7, -100, -100]) cube([1, 200, 200]); }
+}
 
 // ---------- Helmet envelope: the space the two parts leave for the helmet ----------
 // = below the wedge's underside (dome + lifted toe) AND behind the cage's back (its real curved pad), over the cage width.
