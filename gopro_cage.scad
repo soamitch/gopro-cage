@@ -16,7 +16,7 @@
 //   "nutplate"     - the plate inside the helmet that holds the 4 M3 nylocs (pause-and-insert, see np_pause_z)
 //   "fit8_sec"    - a 1 mm slice through cage8 bolted to the wedge at x = fit_sec_x (side view of the contact)
 //   "helmet8" / "fit8_helmet" - the helmet shape implied by the wedge underside + cage pad / everything together (preview)
-PART = "wedge";
+PART = "nutplate";
 
 $fn = 48;
 
@@ -82,6 +82,8 @@ engrave_size  = 4.5;    // front letter size
 engrave_pitch = 5.5;    // front line spacing
 engrave_top      = "Mitch Henrie";      // top face ("" for none); reads with the front edge toward you
 engrave_top_size = 4.5;
+engrave_bottom      = "801-786-9255";  // bottom face ("" for none); reads with the front edge toward you, like the top
+engrave_bottom_size = 4.5;
 engrave_d     = 0.6;    // depth
 engrave_font  = "Liberation Sans:style=Bold";
 hook_flare = 1.2;   // the channel mouth at the bottom is flared by this much per side
@@ -402,6 +404,11 @@ module cage(c) {
             translate([(bx0 + btn_w + xo) / 2, (pd + front_t - back_t) / 2, oz1 + 0.01]) rotate([180, 0, 0])
                 linear_extrude(height = engrave_d + 0.01)
                     text(engrave_top, size = engrave_top_size, font = engrave_font, halign = "center", valign = "center");
+        // engraved text on the bottom face, centred
+        if (engrave_bottom != "")
+            translate([(ox0 + xo) / 2, (pd + front_t - back_t) / 2, oz0 - 0.01]) rotate([0, 0, 180])
+                linear_extrude(height = engrave_d + 0.01)
+                    text(engrave_bottom, size = engrave_bottom_size, font = engrave_font, halign = "center", valign = "center");
         // countersunk screw holes (head on the pocket side)
         for (sx = screw_xs) translate([sx, 0, 0]) {
             translate([0, -40, 0]) rotate([-90, 0, 0]) cylinder(d = screw_d, h = 41);
@@ -714,7 +721,7 @@ np_roof  = 1.2;              // over the nut, against the helmet (at the thinnes
 np_boss_af = 9.5;            // hex bosses round the nuts
 np_bar_w = 4.5;  np_bar_t = 3;     // frame bars, following the inside of the shell
 np_hole = 3.5;               // M3 clearance
-np_membrane = 0.4;           // sacrificial skin over each bolt hole on the head side (2 layers): stops supports growing up
+np_membrane = 0;             // skin over each bolt hole on the head side (0 = holes open through; 0.4 = 2 sacrificial layers)
                              // into the nut pockets from the bed; the bolt pushes through it (or poke it with a 3 mm drill)
 np_pause_z = np_floor + np_nut_h;  // PAUSE here (height above the bed): the first layer printed above it covers the nuts
 module nutplate() let(
@@ -739,7 +746,7 @@ module nutplate() let(
             }
         }
         for (p = holes) {
-            translate([p[0], p[1], z0 + np_membrane]) cylinder(d = np_hole, h = 40, $fn = 24);   // (thin skin left at the bed)
+            translate([p[0], p[1], z0 + (np_membrane > 0 ? np_membrane : -1)]) cylinder(d = np_hole, h = 40, $fn = 24);
             translate([p[0], p[1], z0 + np_floor]) cylinder(d = np_nut_af / cos(30), h = np_nut_h, $fn = 6);
         }
     }
