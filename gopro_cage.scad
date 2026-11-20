@@ -729,21 +729,26 @@ module nutplate() let(
         rxi = w_dome_rx - np_shell_t, ryi = w_dome_ry - np_shell_t,
         si = function(x, y) w_dome_h - np_shell_t - x * x / (2 * rxi) - (y - yc) * (y - yc) / (2 * ryi),   // helmet's inside surface
         holes = [[-w_bolt_dx_f / 2, yf], [w_bolt_dx_f / 2, yf], [w_bolt_dx_b / 2, yb], [-w_bolt_dx_b / 2, yb]],
-        ptop = min([for (p = holes) si(p[0], p[1])]) - np_roof,     // all pocket tops at one height
+        pr = np_nut_af / cos(30) / 2,                               // pocket hex corner radius
+        // all pocket tops at one height: np_roof under the LOWEST point of the shell over any pocket (its outer corners, where
+        // the curve has dropped away), less 0.15 for the surface mesh sitting a hair under the true curve
+        ptop = min([for (p = holes, a = [0 : 60 : 360]) si(p[0] + (a < 360 ? pr * cos(a) : 0), p[1] + (a < 360 ? pr * sin(a) : 0))])
+               - np_roof - 0.15,
         z0 = ptop - np_nut_h - np_floor)                           // flat bottom of the bosses (the bed)
     translate([0, 0, -z0]) difference() {
-        union() {
-            // bars: a band np_bar_t thick under the inside surface
-            intersection() {
-                translate([0, 0, z0 - 1]) linear_extrude(height = 40)
-                    for (e = [[0, 1], [1, 2], [2, 3], [3, 0], [0, 2], [1, 3]]) hull() for (i = e) translate(holes[i]) circle(d = np_bar_w, $fn = 24);
-                heightfield(-45, 45, yb - 10, yf + 10, function(x, y) si(x, y) - np_bar_t, si, 40);
-            }
-            // bosses: from the flat bottom up to the inside surface
-            intersection() {
+        // one surface for the whole top (bars and bosses), so there's no seam where they meet
+        intersection() {
+            union() {
+                // bars: a band np_bar_t thick under the inside surface
+                intersection() {
+                    translate([0, 0, z0 - 1]) linear_extrude(height = 40)
+                        for (e = [[0, 1], [1, 2], [2, 3], [3, 0], [0, 2], [1, 3]]) hull() for (i = e) translate(holes[i]) circle(d = np_bar_w, $fn = 24);
+                    heightfield(-45, 45, yb - 10, yf + 10, function(x, y) si(x, y) - np_bar_t, function(x, y) si(x, y) + 2, 40);
+                }
+                // bosses: from the flat bottom up
                 for (p = holes) translate([p[0], p[1], z0]) cylinder(d = np_boss_af / cos(30), h = 30, $fn = 6);
-                heightfield(-45, 45, yb - 10, yf + 10, function(x, y) z0 - 1, si, 30);
             }
+            heightfield(-45, 45, yb - 10, yf + 10, function(x, y) z0 - 1, si, 60);
         }
         for (p = holes) {
             translate([p[0], p[1], z0 + (np_membrane > 0 ? np_membrane : -1)]) cylinder(d = np_hole, h = 40, $fn = 24);
