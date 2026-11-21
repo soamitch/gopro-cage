@@ -16,7 +16,7 @@
 //   "nutplate"     - the plate inside the helmet that holds the 4 M3 nylocs (pause-and-insert, see np_pause_z)
 //   "fit8_sec"    - a 1 mm slice through cage8 bolted to the wedge at x = fit_sec_x (side view of the contact)
 //   "helmet8" / "fit8_helmet" - the helmet shape implied by the wedge underside + cage pad / everything together (preview)
-PART = "cage8";
+PART = "wedge";
 
 $fn = 48;
 
@@ -520,13 +520,12 @@ module heightfield(x0, x1, y0, y1, lo, hi, n = 40) {
     polyhedron(pts, faces);
 }
 w_front_r = 6;     // front corners rounded in plan view (all the way up) to fit the rounded corners of the helmet's pocket (GUESS)
-// Hair-tie anchor: a U-shaped groove in the wedge's front face (the seam with the cage), below the cage screw on the cage's
-// closed side. The tie's loop goes round the post inside the U; the cage, bolted on, closes the groove so it can't lift out.
-// Both strands run out of the closed-side edge, then forward round the cage to the hook. The tie stays uncut.
-ht_cord  = 3.5;    // groove width per strand (hair tie thickness + a little)
-ht_depth = 3;      // groove depth into the wedge (a hair less than the tie, so the cage clamps it too)
-ht_post_d = 4;     // post the loop wraps round
-ht_below = 9;      // post centre below the screw axis, measured along the seam (leaves ~1.3 mm round the screw hole)
+// Hair-tie channel: a straight groove right across the wedge's front face (the seam with the cage), just below the cage screws.
+// The tie (uncut) wraps all the way round the cage: through this channel behind it, round both sides, and across the front
+// (in the front recess, held by the hook). The bolted-on cage closes the channel, so the band can't ride up or down.
+ht_cord  = 3.5;    // channel width (hair tie 3.3 unstretched)
+ht_depth = 3;      // channel depth into the wedge (a hair less than the tie, so the cage clamps it too)
+ht_below = 5.5;    // channel centre below the screw axes, measured along the seam (~1.5 mm clear of the screw holes)
 w_tab_gap = 0.2;   // gap left under the cage's top tab (the screw panel on the front face is the seat)
 module wedge(fit_cage = true) {
     yt = w_fy(w_h);                                  // top of the front wall
@@ -585,15 +584,11 @@ module wedge(fit_cage = true) {
         for (m = [0, 1]) mirror([m, 0, 0]) translate([w_block_w / 2 - w_front_r, w_fy(w_toe_tip_z) - w_front_r, -50])   // from the toe tip (the front edge)
             linear_extrude(height = 100) difference() { square([w_front_r + 20, w_front_r + 20]); circle(r = w_front_r, $fn = 48); }
         recess_corners();
-        // hair-tie groove (see ht_): in the seam plane, local frame: u = x (toward the closed side), v = down the seam, n = into the wedge
+        // hair-tie channel (see ht_): in the seam plane; local frame: u = x, v = down the seam, n = into the wedge
         if (fit_cage) let(T2 = cage2w([pad_floor_depth + thin_t, tri_h]), F2 = cage2w([ramp_end_depth, z_step]),
-                ev = (F2 - T2) / norm(F2 - T2), en0 = [ev[1], -ev[0]], en = en0[0] < 0 ? en0 : -en0,
-                sx = w_screw_dx / 2, L = 30, r = ht_post_d / 2)
-            multmatrix([[1, 0, 0, sx], [0, ev[0], en[0], w_s0[1]], [0, ev[1], en[1], w_s0[2]], [0, 0, 0, 1]])
-                translate([0, 0, -2]) linear_extrude(height = ht_depth + 2) difference() {
-                    hull() { translate([0, ht_below]) circle(r = r + ht_cord, $fn = 48); translate([L, ht_below]) circle(r = r + ht_cord, $fn = 48); }
-                    hull() { translate([0, ht_below]) circle(r = r, $fn = 32); translate([L, ht_below]) circle(r = r, $fn = 32); }
-                }
+                ev = (F2 - T2) / norm(F2 - T2), en0 = [ev[1], -ev[0]], en = en0[0] < 0 ? en0 : -en0)
+            multmatrix([[1, 0, 0, 0], [0, ev[0], en[0], w_s0[1]], [0, ev[1], en[1], w_s0[2]], [0, 0, 0, 1]])
+                translate([-60, ht_below - ht_cord / 2, -2]) cube([120, ht_cord, ht_depth + 2]);
         // the dome under the plate
         heightfield(-50, 50, -w_plate_l - 10, 10, function(x, y) -30, function(x, y) dome(x, y));
         // under the toe: lifted w_toe_lift, flat for w_toe_flat, then sloping up to meet the front wall at the tip
