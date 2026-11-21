@@ -271,16 +271,18 @@ function pad_s(i) = max(0, (len($pc[i]) > 2 ? $pc[i][2] : i < 1 ? 0 : max(0, $pc
 
 // Outline (in the X-Y plane) of everything BEHIND the pad's curved surface at one height.
 // dc = depth at the corners, s = sag, so the centre is s closer to the front. The curve is a circular arc.
+// $pad_ext (combo only): the arc carries on this far past both ends, so the thickened closed side follows the pad's curve.
 function pad_slice_pts(dc, s) =
-    let(hw = (x_open8 - ix0) / 2,
+    let(pe = is_undef($pad_ext) ? 0 : $pad_ext,
+        hw = (x_open8 - ix0) / 2,
         xc = (ix0 + x_open8) / 2,
         yc = ref_front_to_floor - (dc - s),                     // y of the surface in the middle
         R  = s > 0.001 ? (hw * hw + s * s) / (2 * s) : 1e9)
-    concat([[ix0 - 1, -80]],
-           [for (k = [0 : 24])
-               let(x = ix0 + (x_open8 - ix0) * k / 24, u = x - xc)
+    concat([[ix0 - pe - 1, -80]],
+           [for (k = [0 : 24 + 2 * ceil(pe)])
+               let(x = ix0 - pe + (x_open8 - ix0 + 2 * pe) * k / (24 + 2 * ceil(pe)), u = x - xc)
                [x, s > 0.001 ? yc - (R - sqrt(R * R - u * u)) : yc]],
-           [[x_open8 + 1, -80]]);
+           [[x_open8 + pe + 1, -80]]);
 
 // Cutter that carves the concave curve into the back of the cage
 module pad_cut() {
@@ -307,7 +309,7 @@ module interface(c) {
     );
     // runs from the open side to the closed wall of THIS cage (for a wider camera the plate continues past the Hero 8 footprint
     // at the corner depth of the curve, so the back plate is as wide as the cage; the curve itself stays where it is)
-    ixe = cx0(c) - clear - wall_l;               // closed side of THIS cage
+    ixe = cx0(c) - clear - wall_l - (is_undef($pad_ext) ? 0 : $pad_ext);   // closed side of THIS cage (combo: carried on outward)
     translate([ixe, 0, 0]) rotate([90, 0, 90])
         linear_extrude(height = (cx1(c) - overhang) - ixe) polygon(pts);   // ends flush with the open side of the cage
 }
@@ -341,6 +343,11 @@ module cage(c) {
                     interface(c);
                 }
                 envelope(ox0, xo, oz0, oz1, pd + front_t);   // ends at the open side, so its edges are rounded too
+            }
+            // combo: the back interface carried on past the closed wall (its pad curve continues, cut below), under the thickened side
+            if (!is_undef($pad_ext)) intersection() {
+                interface(c);
+                translate([ox0 - $pad_ext - 1, -200, -200]) cube([$pad_ext + 2, 200, 400]);
             }
             // elastic hook: block on the front face near the open end (eye is cut below)
             // (top flush with the bottom of the lens window, all outer edges rounded)
@@ -678,7 +685,8 @@ module closed_slab(c) let(xs = cx0(c) - clear - wall_l + wall_l - 0.1)
 function pad_y_at(x, o0) = let(n = len($pc), o = max($pc[0][0], min(o0, $pc[n - 1][0])), i = max([for (k = [0 : n - 2]) if ($pc[k][0] <= o) k]),
         t = (o - $pc[i][0]) / ($pc[i + 1][0] - $pc[i][0]),
         dc = $pc[i][1] + t * ($pc[i + 1][1] - $pc[i][1]), sg = pad_s(i) + t * (pad_s(i + 1) - pad_s(i)),
-        hw = (x_open8 - ix0) / 2, u = min(max(x, ix0), x_open8) - (ix0 + x_open8) / 2,
+        pe = is_undef($pad_ext) ? 0 : $pad_ext,
+        hw = (x_open8 - ix0) / 2, u = min(max(x, ix0 - pe), x_open8 + pe) - (ix0 + x_open8) / 2,
         R = sg > 0.001 ? (hw * hw + sg * sg) / (2 * sg) : 1e9, yc = ref_front_to_floor - (dc - sg))
     sg > 0.001 ? yc - (R - sqrt(R * R - u * u)) : yc;
 // hair-tie groove across the pad: a round-bottomed channel (radius ht_cord / 2, ht_depth deep) that follows the pad's curve,
@@ -689,19 +697,6 @@ module pad_groove(N = 40) let(o = combo_ht_o, zc = ref_top - (z_step + o), r = h
             translate(P) sphere(r = r, $fn = 24);
             translate(P - [0, 15, 0]) sphere(r = r, $fn = 24);   // the open mouth, out the back of the pad
         }
-// rounds the closed side's back corner (flat side face / curved pad) where the band wraps round it out of the groove:
-// radius combo_wrap_r over the groove, easing to a sharp corner combo_wrap_h above and below it (cage frame)
-combo_wrap_r = 3;
-combo_wrap_h = 5;
-module groove_corner(n = 14) let(xb = -combo_x - cage_screw_pt[0], zc = ref_top - (z_step + combo_ht_o),
-        rr = function(z) combo_wrap_r * (0.5 + 0.5 * cos(180 * min(1, abs(z - zc) / combo_wrap_h))),
-        zs = [for (k = [0 : n]) zc - combo_wrap_h + 2 * combo_wrap_h * k / n],
-        yc = function(z) pad_y_at(ix0, ref_top - z - z_step))
-    for (k = [0 : n - 1]) difference() {
-        hull() for (z = [zs[k], zs[k + 1]]) translate([xb - 1, yc(z) - 1, z]) cube([combo_wrap_r + 1.01, combo_wrap_r + 1.01, 0.01]);
-        hull() for (z = [zs[k], zs[k + 1]]) let(r = max(0.01, rr(z)))
-            translate([xb + r, yc(z) + r, z]) linear_extrude(height = 0.01) offset(r = r, $fn = 32) square(40);
-    }
 // the wedge block's closed side, filled out flush with the bed (combo_x) above w_widen_z, with a 45-degree taper below that,
 // so the strip between the side slot and the cage doesn't hang in the air when printed on that side
 module block_fill() let(yt = w_fy(w_h), yb = yt - w_top_l - (w_h - w_plate_t) / tan(w_back), xb = w_block_w / 2 - 0.01,
@@ -714,13 +709,13 @@ module block_fill() let(yt = w_fy(w_h), yb = yt - w_top_l - (w_h - w_plate_t) / 
             }
         translate([xb, 0, w_widen_z - (combo_x - xb)]) rotate([0, -45, 0]) translate([-300, -150, 0]) cube([600, 300, 300]);
     }
-module combo(c) let($combo_c = c) difference() {
+module combo(c) let($combo_c = c, $pad_ext = 12) difference() {
     intersection() {
         union() { wedge(true); cage_on_wedge(c); place_cage() closed_slab(c); block_fill(); }
         translate([-150, -150, -150]) cube([150 + combo_x, 300, 300]);
     }
     w_slot_cuts(cap = true);   // (the inner end of the bed-side slot is a short ~7 mm bridge; prints fine without a 45-degree roof)
-    place_cage() { pad_groove(); groove_corner(); }
+    place_cage() pad_groove();
 }
 if (PART == "combo8")  combo(H8);
 if (PART == "combo13") combo(H13);
