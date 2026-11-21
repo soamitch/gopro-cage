@@ -674,18 +674,20 @@ module place_cage() translate(w_s0) rotate([w_screw_up, 0, 0]) translate(-cage_s
 module closed_slab(c) let(xs = cx0(c) - clear - wall_l + wall_l - 0.1)
     translate([xs, 0, 0]) rotate([0, -90, 0]) linear_extrude(height = 30)
         projection(cut = true) rotate([0, 90, 0]) translate([-xs, 0, 0]) cage(c);
-module pad_groove() let(zc = ref_top - (z_step + combo_ht_o), yc = ref_front_to_floor - 39.0, r = ht_cord / 2, n = 9)   // (cage frame)
-    // round-bottomed (U): stacked thin bands, each cut to the depth of a circle of radius r centred (ht_depth - r) in from the pad
-    for (i = [0 : n - 1]) let(z0 = zc - r + 2 * r * i / n, z1 = z0 + 2 * r / n, zm = (z0 + z1) / 2,
-            dep = (ht_depth - r) + sqrt(max(0, r * r - (zm - zc) * (zm - zc))))
-        intersection() {
-            translate([-150, -150, z0]) cube([300, 300, z1 - z0 + 0.001]);
-            translate([0, dep, 0]) union() {
-                pad_cut();
-                // past the ends of the pad (the closed-side slab, the open side): straight on at the corner depth
-                translate([ix0 - 60, -80, -150]) cube([60.5, 80 + yc, 300]);
-                translate([x_open8 - 0.5, -80, -150]) cube([60.5, 80 + yc, 300]);
-            }
+// y of the pad's curved surface at pad offset o (cage frame), across x; straight on at the corner depth past the pad's ends
+function pad_y_at(x, o) = let(n = len($pc), i = max([for (k = [0 : n - 2]) if ($pc[k][0] <= o) k]),
+        t = (o - $pc[i][0]) / ($pc[i + 1][0] - $pc[i][0]),
+        dc = $pc[i][1] + t * ($pc[i + 1][1] - $pc[i][1]), sg = pad_s(i) + t * (pad_s(i + 1) - pad_s(i)),
+        hw = (x_open8 - ix0) / 2, u = min(max(x, ix0), x_open8) - (ix0 + x_open8) / 2,
+        R = sg > 0.001 ? (hw * hw + sg * sg) / (2 * sg) : 1e9, yc = ref_front_to_floor - (dc - sg))
+    sg > 0.001 ? yc - (R - sqrt(R * R - u * u)) : yc;
+// hair-tie groove across the pad: a round-bottomed channel (radius ht_cord / 2, ht_depth deep) that follows the pad's curve,
+// swept as a chain of short hulls so it is smooth (cage frame)
+module pad_groove(N = 40) let(o = combo_ht_o, zc = ref_top - (z_step + o), r = ht_cord / 2, x0 = ix0 - 12, x1 = x_open8 + 12)
+    for (k = [0 : N - 1]) hull() for (x = [x0 + (x1 - x0) * k / N, x0 + (x1 - x0) * (k + 1) / N])
+        let(P = [x, pad_y_at(x, o) + ht_depth - r, zc]) {
+            translate(P) sphere(r = r, $fn = 24);
+            translate(P - [0, 15, 0]) sphere(r = r, $fn = 24);   // the open mouth, out the back of the pad
         }
 // the wedge block's closed side, filled out flush with the bed (combo_x) above w_widen_z, with a 45-degree taper below that,
 // so the strip between the side slot and the cage doesn't hang in the air when printed on that side
