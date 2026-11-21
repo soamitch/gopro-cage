@@ -16,7 +16,7 @@
 //   "nutplate"     - the plate inside the helmet that holds the 4 M3 nylocs (pause-and-insert, see np_pause_z)
 //   "fit8_sec"    - a 1 mm slice through cage8 bolted to the wedge at x = fit_sec_x (side view of the contact)
 //   "helmet8" / "fit8_helmet" - the helmet shape implied by the wedge underside + cage pad / everything together (preview)
-PART = "wedge";
+PART = "cage8";
 
 $fn = 48;
 
@@ -64,9 +64,11 @@ lw_z0 = 8;  lw_z1 = 8;  lw_y0 = 4;  lw_y1 = 6;
 // elastic (hair tie) slot: a round hole (measured on the original) running along X through the back wall, just behind the
 // pocket floor; at the open side the floor over the hole is cut away (hole width) so the tie touches the camera there.
 cord_slot_w = 6;     // slot height (the original's hole is 3 mm round; made taller so the hair tie threads easily)
-cord_slot_t = 3;     // slot thickness (as the original: keeps the same plastic behind it)
+cord_slot_t0 = 3;    // slot thickness, front to back, everywhere (as the original)
+cord_slot_t = 4.5;   // ... grown toward the back to this wherever the back has room (cord_wall behind it); 3 was hard to thread
 cord_floor = 1.3;    // thinnest plastic between the pocket floor and the hole (measured 1.3)
-cord_y = -(cord_floor + cord_slot_t / 2);   // hole centre, behind the pocket floor (y = 0 is the floor)
+cord_y0 = -(cord_floor + cord_slot_t0 / 2);  // centre of the 3 mm core, behind the pocket floor (y = 0 is the floor)
+cord_y = -(cord_floor + cord_slot_t / 2);    // centre of the full-size slot (same front face, cord_floor from the camera)
 cord_edge_from_top = 38.7 - (cord_slot_w - 3);   // top edge: the original's 3 mm hole had its top edge 38.7 from the top;
                              // the taller slot keeps that hole's BOTTOM edge and grows upward (lower down the pad is too thin)
 cord_from_top = cord_edge_from_top + cord_slot_w / 2;   // ... to the hole centre
@@ -355,7 +357,7 @@ module cage(c) {
         // concave curve across the back of the pad (never closer than cord_wall to the hair-tie slot)
         difference() {
             pad_cut();
-            translate([ox0 - 2, cord_y, ref_top - cord_from_top]) stadium_x(cord_slot_w + 2 * cord_wall, cord_slot_t + 2 * cord_wall, xo - ox0 + 14);
+            translate([ox0 - 2, cord_y0, ref_top - cord_from_top]) stadium_x(cord_slot_w + 2 * cord_wall, cord_slot_t0 + 2 * cord_wall, xo - ox0 + 14);
         }
         // camera pocket (open to the right)
         translate([px0, 0, pz0]) rbox(xo + 10 - px0, pz1 - pz0, pd, c[3] + clear);
@@ -374,10 +376,15 @@ module cage(c) {
         // PLACEHOLDER window through the left wall
         translate([ox0 - 1, lw_y0, pz0 + lw_z0]) cube([wall_l + 2, pd - lw_y0 - lw_y1, (pz1 - pz0) - lw_z0 - lw_z1]);
         // elastic cord hole through the back wall, with a notch around the opening on the open side
-        translate([ox0 - 1, cord_y, ref_top - cord_from_top]) stadium_x(cord_slot_w, cord_slot_t, xo - ox0 + 12);
+        translate([ox0 - 1, cord_y0, ref_top - cord_from_top]) stadium_x(cord_slot_w, cord_slot_t0, xo - ox0 + 12);
+        // ... grown to cord_slot_t toward the back, except where that would come closer than cord_wall to the pad's curved surface
+        difference() {
+            translate([ox0 - 1, cord_y, ref_top - cord_from_top]) stadium_x(cord_slot_w, cord_slot_t, xo - ox0 + 12);
+            translate([0, cord_wall, 0]) pad_cut();
+        }
         // flared entry on the closed side (taller at the outside face) so the tie finds the slot
         hull() {
-            translate([ox0 - 1, cord_y, ref_top - cord_from_top]) stadium_x(cord_slot_w + 2, cord_slot_t, 1.01);
+            translate([ox0 - 1, cord_y, ref_top - cord_from_top]) stadium_x(cord_slot_w + 2, cord_slot_t + 1.5, 1.01);
             translate([ox0 + 1.2, cord_y, ref_top - cord_from_top]) stadium_x(cord_slot_w, cord_slot_t, 0.01);
         }
         translate([xo - cord_notch_l, cord_y, ref_top - cord_from_top - cord_slot_w / 2])
