@@ -105,7 +105,7 @@ screw_dx       = cage_w8 - 2 * screw_edge;            // centre-to-centre spacin
 screw_xs       = [13 - screw_edge, 13 - cage_w8 + screw_edge];   // x of the two screw axes
 csk_d          = 8.7;     // countersink diameter on the pocket side
 csk_h          = (csk_d - screw_d) / 2;   // 90 degree countersink
-csk_extra      = 0.5;     // the whole countersink sits this much deeper, so the heads end up below the pocket floor
+csk_extra      = 0.5;     // the whole countersink sits this much deeper, so the heads end up below the pocket floor (+ back_extra)
 screw_from_top = 13;      // screw axis is this far below the top face of the cage
 floor_to_screw = 2 * clear + H8[1] + top_t - screw_from_top;   // screw axis height above the Hero 8 pocket floor (derived)
 open_to_screw  = 13;      // frame origin to the open side (fixed reference; do not change, the cage is built around it)
@@ -187,7 +187,10 @@ z_top8      = -floor_to_screw + clear + H8[1];
 lens_cz_ref = z_top8 - H8[4] / 2;                    // lens centre z, held fixed for every camera
 
 // Reference geometry of the Hero 8 cage (the back interface is defined against this and never moves)
-ref_front_to_floor = front_t + (H8[2] - H8[5]) + clear_y;   // outside front face to pocket floor
+// back_extra: the back wall is this much thicker behind the camera. The back (pad, screw panel, tab) stays exactly where it was
+// on the wedge and helmet; the pocket and the camera move back_extra further out, and the screw heads sit back_extra deeper.
+back_extra = 2;
+ref_front_to_floor = front_t + (H8[2] - H8[5]) + clear_y - back_extra;   // outside front face (of the original) to pocket floor
 ref_top    = z_top8 + clear + top_t;                          // outer top
 ref_bottom = -floor_to_screw - bottom_t;                      // outer bottom
 ix0        = cx1b(H8) - H8[0] - clear - wall_l;               // outer closed (left) edge of the Hero 8 cage
@@ -420,8 +423,8 @@ module cage(c) {
         // countersunk screw holes (head on the pocket side)
         for (sx = screw_xs) translate([sx, 0, 0]) {
             translate([0, -40, 0]) rotate([-90, 0, 0]) cylinder(d = screw_d, h = 41);
-            translate([0, -csk_h - csk_extra, 0]) rotate([-90, 0, 0]) cylinder(d1 = screw_d, d2 = csk_d, h = csk_h + 0.01);
-            translate([0, -csk_extra - 0.01, 0]) rotate([-90, 0, 0]) cylinder(d = csk_d, h = csk_extra + 2.01);
+            translate([0, -csk_h - csk_extra - back_extra, 0]) rotate([-90, 0, 0]) cylinder(d1 = screw_d, d2 = csk_d, h = csk_h + 0.01);
+            translate([0, -csk_extra - back_extra - 0.01, 0]) rotate([-90, 0, 0]) cylinder(d = csk_d, h = csk_extra + back_extra + 2.01);
         }
     }
 }
