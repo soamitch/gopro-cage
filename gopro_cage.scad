@@ -469,6 +469,17 @@ w_cage_wall = 4.55;         // cage back wall the screw passes through first (fr
 w_nut_af = 7.3;  w_nut_t = 5.2;   // pocket for an M4 nyloc nut (7 across flats, ~5 tall, + clearance), pushed in from the helmet side,
                                   // nylon ring away from the cage
 w_nut_past = 0.6;                 // screw tip sticks out this far past the nut's nylon (so it locks)
+w_nut_trap = true;   // true: nuts sealed inside with a PAUSE (pocket opens upward as printed, roof is one flat layer, no tunnel
+                     // to the helmet side). false: hex tunnel out through the helmet side, nut pushed in after printing.
+// Print frame: the wedge prints standing on its front face (the plane y = w_fy(z), through the origin). w_up = up as printed.
+w_up = [0, -cos(w_lean), -sin(w_lean)];
+function w_ph(p) = p * w_up;                                    // height above the bed as printed
+module print_frame() multmatrix([[1, 0, 0, 0], [0, -sin(w_lean), w_up[1], 0], [0, cos(w_lean), w_up[2], 0], [0, 0, 0, 1]]) children();
+// nut pocket roof (as printed): just above the highest point of the nut. PAUSE at the first layer above it, drop the nuts in.
+w_nut_roof = let(s0 = [0, -w_screw_z * tan(w_lean), w_screw_z], dir = [0, -cos(w_screw_up), -sin(w_screw_up)],
+        ns = w_screw_len - w_cage_wall - w_nut_t / 2 - w_nut_past, c = dir * w_up)
+    max(w_ph(s0 + (ns - w_nut_t / 2) * dir), w_ph(s0 + (ns + w_nut_t / 2) * dir)) + w_nut_af / cos(30) / 2 * sqrt(1 - c * c) + 0.3;
+w_pause_layer = (floor((w_nut_roof + 0.1) / 0.2) + 1) * 0.2;   // (0.2 mm layers, sliced at mid-height) first layer that closes the roof
 // helmet bolts: 3.5 mm holes, ~3 mm from the side and back edges to the hole edge (measured)
 w_bolt_d = 3.5;
 w_washer_d = 8;             // flat washer seats around the two rear holes (measured)
@@ -617,8 +628,15 @@ module wedge(fit_cage = true) {
             translate(s0 - 2 * dir) rotate([-(90 - w_screw_up), 0, 0]) rotate([180, 0, 0]) cylinder(d = w_screw_d, h = 2 + w_screw_len - w_cage_wall + 1.5, $fn = 24);
             // nut pocket: a hex tunnel along the screw axis, from the nut's front face out through the bottom, so the nyloc
             // slides in from below square to the screw (points of the hex front/back, like the original)
-            translate(s0 + (nut_s - w_nut_t / 2) * dir) rotate([90 + w_screw_up, 0, 0]) rotate([0, 0, 90])
-                cylinder(d = w_nut_af / cos(30), h = 60, $fn = 6);
+            if (!w_nut_trap)
+                translate(s0 + (nut_s - w_nut_t / 2) * dir) rotate([90 + w_screw_up, 0, 0]) rotate([0, 0, 90])
+                    cylinder(d = w_nut_af / cos(30), h = 60, $fn = 6);
+            // trapped: the nut's hex, swept straight up (as printed) to a flat roof just above the nut's highest point
+            else intersection() {
+                hull() for (k = [0, 12]) translate(s0 + (nut_s - w_nut_t / 2) * dir + k * w_up)
+                    rotate([90 + w_screw_up, 0, 0]) rotate([0, 0, 90]) cylinder(d = w_nut_af / cos(30), h = w_nut_t, $fn = 6);
+                print_frame() translate([-100, -100, -50]) cube([200, 200, 50 + w_nut_roof]);
+            }
         }
     }
 }
@@ -783,6 +801,7 @@ module nutplate() let(
             translate([p[0], p[1], z0 + np_floor]) cylinder(d = np_nut_af / cos(30), h = np_nut_h, $fn = 6);
         }
     }
+if (PART == "wedge" && w_nut_trap) echo(str("wedge: nut roof at ", w_nut_roof, " mm as printed; PAUSE at layer ", w_pause_layer));
 if (PART == "nutplate") { nutplate(); echo(str("nutplate: add a PAUSE at the first layer above ", np_pause_z, " mm")); }
 
 // ---------- Fit check: the cage (as printed, mirrored) bolted to the wedge ----------
