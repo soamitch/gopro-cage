@@ -16,7 +16,7 @@
 //   "nutplate"     - the plate inside the helmet that holds the 4 M3 nylocs (pause-and-insert, see np_pause_z)
 //   "fit8_sec"    - a 1 mm slice through cage8 bolted to the wedge at x = fit_sec_x (side view of the contact)
 //   "helmet8" / "fit8_helmet" - the helmet shape implied by the wedge underside + cage pad / everything together (preview)
-PART = "wedge";
+PART = "nutplate";
 
 $fn = 48;
 
@@ -762,8 +762,9 @@ if (PART == "padtest_set")
 np_shell_t = 4;              // helmet shell thickness at the holes (measured: 4)
 np_nut_af = 5.5 + 0.3;       // M3 nyloc: 5.5 across flats + clearance (+0.2 was too tight: the nuts didn't fit)
 np_nut_h  = 4.0 + 0.2;       // M3 nyloc: 4 mm tall + a little, so the nut sits below the layer printed after the pause
-np_floor = 1.0;              // under the nut (head side); the bolt hole goes through, so any bolt length works
-np_roof  = 1.2;              // over the nut, against the helmet (at the thinnest boss)
+np_floor = 0.6;              // under the nut (head side; 3 layers, was 1.0); the bolt hole goes through, so any bolt length works
+np_roof  = 0.6;              // over the nut, against the helmet (at the thinnest point; 3 layers, was 1.2)
+np_boss_ch = 1;              // chamfer round the bottom (head-side) edge of each boss, so it is softer on the forehead
 np_boss_af = 9.5;            // hex bosses round the nuts
 np_bar_w = 4.5;  np_bar_t = 3;     // frame bars, following the inside of the shell
 np_hole = 3.5;               // M3 clearance
@@ -792,7 +793,10 @@ module nutplate() let(
                     heightfield(-45, 45, yb - 10, yf + 10, function(x, y) si(x, y) - np_bar_t, function(x, y) si(x, y) + 2, 40);
                 }
                 // bosses: from the flat bottom up
-                for (p = holes) translate([p[0], p[1], z0]) cylinder(d = np_boss_af / cos(30), h = 30, $fn = 6);
+                for (p = holes) translate([p[0], p[1], z0]) hull() {
+                    cylinder(d = (np_boss_af - 2 * np_boss_ch) / cos(30), h = 0.01, $fn = 6);
+                    translate([0, 0, np_boss_ch]) cylinder(d = np_boss_af / cos(30), h = 30 - np_boss_ch, $fn = 6);
+                }
             }
             heightfield(-45, 45, yb - 10, yf + 10, function(x, y) z0 - 1, si, 60);
         }
