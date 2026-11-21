@@ -637,12 +637,15 @@ if (PART == "wedge")        wedge();
 
 // side slots (open to the side), one over each front helmet bolt, with the straight-down hex-key access to the bolt head.
 // tear = true (combo, printed on its closed side = +x down): the inner end of the +x slot gets a 45-degree roof, not a flat ceiling.
-module w_slot_cuts(tear = false) let(yt = w_fy(w_h), yf = w_fy(w_slot_z), sx0 = w_bolt_dx_f / 2, yf_b = w_yf_b,
+// cap = true (combo): the side slot gets a flat top 1.5 mm under the wedge's top instead of running to a point at the top,
+// which left knife-edge slivers where the wedge is fused to the cage's tab.
+module w_slot_cuts(tear = false, cap = false) let(yt = w_fy(w_h), yf = w_fy(w_slot_z), sx0 = w_bolt_dx_f / 2, yf_b = w_yf_b,
         slot = [[yf - w_slot_wall, w_slot_z], [yf - w_slot_wall - w_slot_d, w_slot_z], [yt - w_slot_wall, w_h + 0.01], [yt - w_slot_wall + 0.5, w_h + 1]],
         key = [[yf_b - w_slot_w / 2, w_slot_z], [yf_b + w_slot_w / 2, w_slot_z], [yf_b + w_slot_w / 2, w_slot_z + w_h + 5], [yf_b - w_slot_w / 2, w_slot_z + w_h + 5]])
     for (sx = [-1, 1]) let(x_in = sx0 - w_slot_w / 2, len = max(w_plate_w, w_top_w) / 2 + 4 - x_in) {
         translate([sx > 0 ? x_in : -x_in - len, 0, 0]) {
-            rotate([90, 0, 90]) linear_extrude(height = len) polygon(slot);
+            rotate([90, 0, 90]) linear_extrude(height = len)
+                intersection() { polygon(slot); translate([-100, -100]) square([200, 100 + (cap ? w_h - 1.5 : 200)]); }
             // straight-down access from the top to the bolt head (hex key), as on the original. Its back wall comes to a
             // 45-degree point (teardrop) so it isn't a flat ceiling when the wedge is printed standing on its front face.
             hull() {
@@ -666,9 +669,11 @@ module w_slot_cuts(tear = false) let(yt = w_fy(w_h), yf = w_fy(w_slot_z), sx0 = 
 combo_x = 37.0;
 combo_ht_o = 6;     // groove centre below the top of the pad's ledge (pad offset o; on the part of the pad that bears on the forehead); ht_cord tall, ht_depth deep
 module place_cage() translate(w_s0) rotate([w_screw_up, 0, 0]) translate(-cage_screw_pt) mirror([1, 0, 0]) children();
-module closed_slab(c) let(ox0 = cx0(c) - clear - wall_l)   // the closed wall's section, extruded outward (cage frame)
-    translate([ox0 + 1, 0, 0]) rotate([0, -90, 0]) linear_extrude(height = 25)
-        projection(cut = true) rotate([0, 90, 0]) translate([-(ox0 + 1), 0, 0]) cage(c);
+// the closed wall's section, extruded outward (cage frame). Taken just inside the pocket (wall_l - 0.1 in from the outside), past
+// the rounding of the cage's edges, so the slab is the cage's full outline and no rounded lip hangs over it.
+module closed_slab(c) let(xs = cx0(c) - clear - wall_l + wall_l - 0.1)
+    translate([xs, 0, 0]) rotate([0, -90, 0]) linear_extrude(height = 30)
+        projection(cut = true) rotate([0, 90, 0]) translate([-xs, 0, 0]) cage(c);
 module pad_groove() let(zc = ref_top - (z_step + combo_ht_o), yc = ref_front_to_floor - 39.0)   // (cage frame)
     intersection() {
         translate([-150, -150, zc - ht_cord / 2]) cube([300, 300, ht_cord]);
@@ -684,7 +689,11 @@ module pad_groove() let(zc = ref_top - (z_step + combo_ht_o), yc = ref_front_to_
 module block_fill() let(yt = w_fy(w_h), yb = yt - w_top_l - (w_h - w_plate_t) / tan(w_back), xb = w_block_w / 2 - 0.01,
         prof = [[-w_fy(10), -10], [yt, w_h], [yt - w_top_l, w_h], [yb, w_plate_t], [yb, -10]])
     intersection() {
-        translate([xb, 0, 0]) rotate([90, 0, 90]) linear_extrude(height = combo_x + 1 - xb) polygon(prof);
+        translate([xb, 0, 0]) rotate([90, 0, 90]) linear_extrude(height = combo_x + 1 - xb)
+            let(p1 = cage2w([pad_floor_depth + thin_t, tri_h]), p2 = cage2w(tab_tip)) union() {
+                polygon(prof);
+                polygon([[w_fy(w_h - 1), w_h - 1], [w_fy(p1[1]), p1[1]], p2, [p2[0], w_h - 1]]);   // raised top under the cage's tab
+            }
         translate([xb, 0, w_widen_z - (combo_x - xb)]) rotate([0, -45, 0]) translate([-300, -150, 0]) cube([600, 300, 300]);
     }
 module combo(c) let($combo_c = c) difference() {
@@ -692,7 +701,7 @@ module combo(c) let($combo_c = c) difference() {
         union() { wedge(true); cage_on_wedge(c); place_cage() closed_slab(c); block_fill(); }
         translate([-150, -150, -150]) cube([150 + combo_x, 300, 300]);
     }
-    w_slot_cuts(tear = true);
+    w_slot_cuts(cap = true);   // (the inner end of the bed-side slot is a short ~7 mm bridge; prints fine without a 45-degree roof)
     place_cage() pad_groove();
 }
 if (PART == "combo8")  combo(H8);
