@@ -13,10 +13,11 @@
 //   "wedge_outline" - just a 4 mm rim of the part of the plate that sits in the recess + holes (quick fit check)
 //   "curve_gauges" - labelled strips with different curves, to measure the helmet in the recess (S = side to side, F = front to back)
 //   "fit8" / "fit8_clash" - cage8 bolted to the wedge (preview) / their overlap (should be empty)
+//   "combo8" / "combo13" - cage + wedge printed as ONE piece (no cage screws), standing on the cage's closed side
 //   "nutplate"     - the plate inside the helmet that holds the 4 M3 nylocs (pause-and-insert, see np_pause_z)
 //   "fit8_sec"    - a 1 mm slice through cage8 bolted to the wedge at x = fit_sec_x (side view of the contact)
 //   "helmet8" / "fit8_helmet" - the helmet shape implied by the wedge underside + cage pad / everything together (preview)
-PART = "nutplate";
+PART = "combo8";
 
 $fn = 48;
 
@@ -424,7 +425,7 @@ module cage(c) {
                 linear_extrude(height = engrave_d + 0.01)
                     text(engrave_bottom, size = engrave_bottom_size, font = engrave_font, halign = "center", valign = "center");
         // countersunk screw holes (head on the pocket side)
-        for (sx = screw_xs) translate([sx, 0, 0]) {
+        if (is_undef($combo_c)) for (sx = screw_xs) translate([sx, 0, 0]) {
             translate([0, -40, 0]) rotate([-90, 0, 0]) cylinder(d = screw_d, h = 41);
             translate([0, -csk_h - csk_extra - back_extra, 0]) rotate([-90, 0, 0]) cylinder(d1 = screw_d, d2 = csk_d, h = csk_h + 0.01);
             translate([0, -csk_extra - back_extra - 0.01, 0]) rotate([-90, 0, 0]) cylinder(d = csk_d, h = csk_extra + back_extra + 2.01);
@@ -566,14 +567,15 @@ module wedge(fit_cage = true) {
         union() {
             rotate([90, 0, 90]) linear_extrude(height = w_block_w, center = true) polygon(prof);
             // widened upper front (a slab behind the front face), 45-degree taper out from w_block_w
-            if (w_top_w > w_block_w) let(dz = (w_top_w - w_block_w) / 2,
+            if (w_top_w > w_block_w && is_undef($combo_c)) let(dz = (w_top_w - w_block_w) / 2,
                     slab = function(z0) [[w_fy(z0), z0], [w_fy(w_h), w_h], [w_fy(w_h) - w_widen_d, w_h], [w_fy(z0) - w_widen_d, z0]])
                 hull() {
                     rotate([90, 0, 90]) linear_extrude(height = w_block_w, center = true) polygon(slab(w_widen_z));
                     rotate([90, 0, 90]) linear_extrude(height = w_top_w, center = true) polygon(slab(w_widen_z + dz));
                 }
             // top raised to sit under the cage's top tab (w_tab_gap below it)
-            if (fit_cage) let(p1 = cage2w([pad_floor_depth + thin_t, tri_h]) - [0, w_tab_gap], p2 = cage2w(tab_tip) - [0, w_tab_gap])
+            if (fit_cage) let(tg = is_undef($combo_c) ? w_tab_gap : 0,
+                    p1 = cage2w([pad_floor_depth + thin_t, tri_h]) - [0, tg], p2 = cage2w(tab_tip) - [0, tg])
                 rotate([90, 0, 90]) linear_extrude(height = w_block_w, center = true)   // (at w_top_w it overhung the hex-key slots)
                     polygon([[w_fy(w_h - 1), w_h - 1], [w_fy(p1[1]), p1[1]], p2, [p2[0], w_h - 1]]);
             // flat, level washer seats on the rear holes: top is w_washer_h above the highest point of the plate around the seat
@@ -590,13 +592,13 @@ module wedge(fit_cage = true) {
             }
         }
         // the cage's own back (Hero 8 and Hero 13 cages share it): the wedge front takes its exact shape, so nothing collides
-        if (fit_cage) { cage_on_wedge(H8); cage_on_wedge(H13); }
+        if (fit_cage) { if (is_undef($combo_c)) { cage_on_wedge(H8); cage_on_wedge(H13); } else cage_on_wedge($combo_c); }
         // round the two front corners (plan view)
         for (m = [0, 1]) mirror([m, 0, 0]) translate([w_block_w / 2 - w_front_r, w_fy(w_toe_tip_z) - w_front_r, -50])   // from the toe tip (the front edge)
             linear_extrude(height = 100) difference() { square([w_front_r + 20, w_front_r + 20]); circle(r = w_front_r, $fn = 48); }
         recess_corners();
         // hair-tie channel (see ht_): in the seam plane; local frame: u = x, v = down the seam, n = into the wedge
-        if (fit_cage) let(T2 = cage2w([pad_floor_depth + thin_t, tri_h]), F2 = cage2w([ramp_end_depth, z_step]),
+        if (fit_cage && is_undef($combo_c)) let(T2 = cage2w([pad_floor_depth + thin_t, tri_h]), F2 = cage2w([ramp_end_depth, z_step]),
                 ev = (F2 - T2) / norm(F2 - T2), en0 = [ev[1], -ev[0]], en = en0[0] < 0 ? en0 : -en0)
             multmatrix([[1, 0, 0, 0], [0, ev[0], en[0], w_s0[1]], [0, ev[1], en[1], w_s0[2]], [0, 0, 0, 1]])
                 hull() {   // round-bottomed (U) so the groove's floor prints as an arch, and cradles the round tie
@@ -609,22 +611,12 @@ module wedge(fit_cage = true) {
         let(y0 = yf_b + w_toe_lift_start)
             heightfield(-50, 50, y0, 15, function(x, y) -30,
                 function(x, y) dome(x, y) + w_toe_lift * min(1, (y - y0) / 0.5) + max(0, y - y0 - w_toe_flat) * tan(w_toe_slope), 60);
-        // side slots (open to the side), one over each front bolt
-        for (sx = [-1, 1]) let(x_in = sx0 - w_slot_w / 2, len = max(w_plate_w, w_top_w) / 2 + 2 - x_in)
-            translate([sx > 0 ? x_in : -x_in - len, 0, 0]) {
-                rotate([90, 0, 90]) linear_extrude(height = len) polygon(slot);
-                // straight-down access from the top to the bolt head (hex key), as on the original. Its back wall comes to a
-                // 45-degree point (teardrop) so it isn't a flat ceiling when the wedge is printed standing on its front face.
-                hull() {
-                    translate([0, yf_b - w_slot_w / 2, w_slot_z]) cube([len, w_slot_w, w_h + 5]);
-                    translate([len / 2, yf_b - w_slot_w / 2 - len / 2, w_slot_z]) cylinder(d = 0.01, h = w_h + 5, $fn = 4);
-                }
-            }
+        if (is_undef($combo_c)) w_slot_cuts();
         // helmet bolt holes
         for (p = [[-sx0, yf_b], [sx0, yf_b], [-w_bolt_dx_b / 2, yb_b], [w_bolt_dx_b / 2, yb_b]])
             translate([p[0], p[1], -30]) cylinder(d = w_bolt_d, h = 60, $fn = 24);
         // cage screw channels + nut pockets (nut inserted from the helmet side)
-        for (sx = [-1, 1]) translate([sx * w_screw_dx / 2, 0, 0]) {
+        if (is_undef($combo_c)) for (sx = [-1, 1]) translate([sx * w_screw_dx / 2, 0, 0]) {
             translate(s0 - 2 * dir) rotate([-(90 - w_screw_up), 0, 0]) rotate([180, 0, 0]) cylinder(d = w_screw_d, h = 2 + w_screw_len - w_cage_wall + 1.5, $fn = 24);
             // nut pocket: a hex tunnel along the screw axis, from the nut's front face out through the bottom, so the nyloc
             // slides in from below square to the screw (points of the hex front/back, like the original)
@@ -642,6 +634,64 @@ module wedge(fit_cage = true) {
 }
 
 if (PART == "wedge")        wedge();
+
+// side slots (open to the side), one over each front helmet bolt, with the straight-down hex-key access to the bolt head.
+// tear = true (combo, printed on its closed side = +x down): the inner end of the +x slot gets a 45-degree roof, not a flat ceiling.
+module w_slot_cuts(tear = false) let(yt = w_fy(w_h), yf = w_fy(w_slot_z), sx0 = w_bolt_dx_f / 2, yf_b = w_yf_b,
+        slot = [[yf - w_slot_wall, w_slot_z], [yf - w_slot_wall - w_slot_d, w_slot_z], [yt - w_slot_wall, w_h + 0.01], [yt - w_slot_wall + 0.5, w_h + 1]],
+        key = [[yf_b - w_slot_w / 2, w_slot_z], [yf_b + w_slot_w / 2, w_slot_z], [yf_b + w_slot_w / 2, w_slot_z + w_h + 5], [yf_b - w_slot_w / 2, w_slot_z + w_h + 5]])
+    for (sx = [-1, 1]) let(x_in = sx0 - w_slot_w / 2, len = max(w_plate_w, w_top_w) / 2 + 4 - x_in) {
+        translate([sx > 0 ? x_in : -x_in - len, 0, 0]) {
+            rotate([90, 0, 90]) linear_extrude(height = len) polygon(slot);
+            // straight-down access from the top to the bolt head (hex key), as on the original. Its back wall comes to a
+            // 45-degree point (teardrop) so it isn't a flat ceiling when the wedge is printed standing on its front face.
+            hull() {
+                translate([0, yf_b - w_slot_w / 2, w_slot_z]) cube([len, w_slot_w, w_h + 5]);
+                translate([len / 2, yf_b - w_slot_w / 2 - len / 2, w_slot_z]) cylinder(d = 0.01, h = w_h + 5, $fn = 4);
+            }
+        }
+        if (tear && sx > 0) for (P = [[slot, 3.85], [key, w_slot_w / 2 - 0.05]]) hull() {
+            translate([x_in, 0, 0]) rotate([90, 0, 90]) linear_extrude(height = 0.01) polygon(P[0]);
+            translate([x_in - P[1], 0, 0]) rotate([90, 0, 90]) linear_extrude(height = 0.01) offset(delta = -P[1]) polygon(P[0]);
+        }
+    }
+
+// ================= COMBO: cage + wedge in one piece (no cage screws, no M4 nuts) =================
+// Printed standing on the cage's closed side. That side is made flat at x = combo_x (the widest point of the base plate, so the
+// plate's back corner and the thickened closed wall both sit on the bed). The plate's long side edges slope in from there, so
+// they still want a few short supports. Hex-key access to the front helmet bolts runs down through the cage's top tab.
+// Hair tie: stays uncut. Its loop hooks round a capped post in a recess on the closed side, just behind the camera; both strands run
+// forward in the recess, round the front corner, across the front recess to the hook on the open side.
+combo_x = 37.0;
+ht_a_depth = 3.5;   // recess depth into the closed side
+ht_post_d = 4;      // post the loop hooks round ...
+ht_cap_d = 7;       // ... with a cap on its outer end (stretch the loop over it)
+ht_cap_t = 1.2;
+ht_post_y = -3;     // post centre, behind the pocket floor (cage frame)
+module place_cage() translate(w_s0) rotate([w_screw_up, 0, 0]) translate(-cage_screw_pt) mirror([1, 0, 0]) children();
+module closed_slab(c) let(ox0 = cx0(c) - clear - wall_l)   // the closed wall's section, extruded outward (cage frame)
+    translate([ox0 + 1, 0, 0]) rotate([0, -90, 0]) linear_extrude(height = 25)
+        projection(cut = true) rotate([0, 90, 0]) translate([-(ox0 + 1), 0, 0]) cage(c);
+module ht_anchor_cut(c) let(xb = -combo_x - cage_screw_pt[0], pd = (c[2] - c[5]) + clear_y,
+        zr = (cz1(c) - c[4] - lens_clear) - hook_h - 0.5 + (hook_eye_w + 0.5) / 2, r = ht_post_d / 2)
+    difference() {
+        translate([xb - 1, 0, 0]) rotate([90, 0, 90]) linear_extrude(height = 1 + ht_a_depth) hull() {
+            translate([ht_post_y, zr]) circle(r = r + ht_cord, $fn = 48);
+            translate([pd + front_t + 2, zr - ht_cord]) square([0.01, 2 * ht_cord]);
+        }
+        translate([xb - 2, ht_post_y, zr]) rotate([0, 90, 0]) cylinder(d = ht_post_d, h = ht_a_depth + 3, $fn = 32);
+        translate([xb - 2, ht_post_y, zr]) rotate([0, 90, 0]) cylinder(d = ht_cap_d, h = 2 + ht_cap_t, $fn = 48);
+    }
+module combo(c) let($combo_c = c) difference() {
+    intersection() {
+        union() { wedge(true); cage_on_wedge(c); place_cage() closed_slab(c); }
+        translate([-150, -150, -150]) cube([150 + combo_x, 300, 300]);
+    }
+    w_slot_cuts(tear = true);
+    place_cage() ht_anchor_cut(c);
+}
+if (PART == "combo8")  combo(H8);
+if (PART == "combo13") combo(H13);
 // fit test for the dome: an open frame with the true helmet-side surface, printed FLAT TOP DOWN (no supports): an 8 mm rim, a
 // cross through the middle and rings round the 4 holes. Top is flat, w_test_t above the highest point of the helmet surface.
 w_test_t = 1.5;
