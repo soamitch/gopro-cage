@@ -675,7 +675,7 @@ module closed_slab(c) let(xs = cx0(c) - clear - wall_l + wall_l - 0.1)
     translate([xs, 0, 0]) rotate([0, -90, 0]) linear_extrude(height = 30)
         projection(cut = true) rotate([0, 90, 0]) translate([-xs, 0, 0]) cage(c);
 // y of the pad's curved surface at pad offset o (cage frame), across x; straight on at the corner depth past the pad's ends
-function pad_y_at(x, o) = let(n = len($pc), i = max([for (k = [0 : n - 2]) if ($pc[k][0] <= o) k]),
+function pad_y_at(x, o0) = let(n = len($pc), o = max($pc[0][0], min(o0, $pc[n - 1][0])), i = max([for (k = [0 : n - 2]) if ($pc[k][0] <= o) k]),
         t = (o - $pc[i][0]) / ($pc[i + 1][0] - $pc[i][0]),
         dc = $pc[i][1] + t * ($pc[i + 1][1] - $pc[i][1]), sg = pad_s(i) + t * (pad_s(i + 1) - pad_s(i)),
         hw = (x_open8 - ix0) / 2, u = min(max(x, ix0), x_open8) - (ix0 + x_open8) / 2,
@@ -689,6 +689,19 @@ module pad_groove(N = 40) let(o = combo_ht_o, zc = ref_top - (z_step + o), r = h
             translate(P) sphere(r = r, $fn = 24);
             translate(P - [0, 15, 0]) sphere(r = r, $fn = 24);   // the open mouth, out the back of the pad
         }
+// rounds the closed side's back corner (flat side face / curved pad) where the band wraps round it out of the groove:
+// radius combo_wrap_r over the groove, easing to a sharp corner combo_wrap_h above and below it (cage frame)
+combo_wrap_r = 3;
+combo_wrap_h = 5;
+module groove_corner(n = 14) let(xb = -combo_x - cage_screw_pt[0], zc = ref_top - (z_step + combo_ht_o),
+        rr = function(z) combo_wrap_r * (0.5 + 0.5 * cos(180 * min(1, abs(z - zc) / combo_wrap_h))),
+        zs = [for (k = [0 : n]) zc - combo_wrap_h + 2 * combo_wrap_h * k / n],
+        yc = function(z) pad_y_at(ix0, ref_top - z - z_step))
+    for (k = [0 : n - 1]) difference() {
+        hull() for (z = [zs[k], zs[k + 1]]) translate([xb - 1, yc(z) - 1, z]) cube([combo_wrap_r + 1.01, combo_wrap_r + 1.01, 0.01]);
+        hull() for (z = [zs[k], zs[k + 1]]) let(r = max(0.01, rr(z)))
+            translate([xb + r, yc(z) + r, z]) linear_extrude(height = 0.01) offset(r = r, $fn = 32) square(40);
+    }
 // the wedge block's closed side, filled out flush with the bed (combo_x) above w_widen_z, with a 45-degree taper below that,
 // so the strip between the side slot and the cage doesn't hang in the air when printed on that side
 module block_fill() let(yt = w_fy(w_h), yb = yt - w_top_l - (w_h - w_plate_t) / tan(w_back), xb = w_block_w / 2 - 0.01,
@@ -707,7 +720,7 @@ module combo(c) let($combo_c = c) difference() {
         translate([-150, -150, -150]) cube([150 + combo_x, 300, 300]);
     }
     w_slot_cuts(cap = true);   // (the inner end of the bed-side slot is a short ~7 mm bridge; prints fine without a 45-degree roof)
-    place_cage() pad_groove();
+    place_cage() { pad_groove(); groove_corner(); }
 }
 if (PART == "combo8")  combo(H8);
 if (PART == "combo13") combo(H13);
