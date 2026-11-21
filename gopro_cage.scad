@@ -588,7 +588,10 @@ module wedge(fit_cage = true) {
         if (fit_cage) let(T2 = cage2w([pad_floor_depth + thin_t, tri_h]), F2 = cage2w([ramp_end_depth, z_step]),
                 ev = (F2 - T2) / norm(F2 - T2), en0 = [ev[1], -ev[0]], en = en0[0] < 0 ? en0 : -en0)
             multmatrix([[1, 0, 0, 0], [0, ev[0], en[0], w_s0[1]], [0, ev[1], en[1], w_s0[2]], [0, 0, 0, 1]])
-                translate([-60, ht_below - ht_cord / 2, -2]) cube([120, ht_cord, ht_depth + 2]);
+                hull() {   // round-bottomed (U) so the groove's floor prints as an arch, and cradles the round tie
+                    translate([-60, ht_below - ht_cord / 2, -2]) cube([120, ht_cord, 0.01]);
+                    translate([-60, ht_below, ht_depth - ht_cord / 2]) rotate([0, 90, 0]) cylinder(d = ht_cord, h = 120, $fn = 32);
+                }
         // the dome under the plate
         heightfield(-50, 50, -w_plate_l - 10, 10, function(x, y) -30, function(x, y) dome(x, y));
         // under the toe: lifted w_toe_lift, flat for w_toe_flat, then sloping up to meet the front wall at the tip
