@@ -660,38 +660,44 @@ module w_slot_cuts(tear = false) let(yt = w_fy(w_h), yf = w_fy(w_slot_z), sx0 = 
 // Printed standing on the cage's closed side. That side is made flat at x = combo_x (the widest point of the base plate, so the
 // plate's back corner and the thickened closed wall both sit on the bed). The plate's long side edges slope in from there, so
 // they still want a few short supports. Hex-key access to the front helmet bolts runs down through the cage's top tab.
-// Hair tie: stays uncut. Its loop hooks round a capped post in a recess on the closed side, just behind the camera; both strands run
-// forward in the recess, round the front corner, across the front recess to the hook on the open side.
+// Hair tie: stays uncut and wraps all the way round the cage. Behind the cage it lies in a groove across the curved pad, just below
+// the ledge; the pad sits on the helmet's forehead, so bolting the piece down closes the groove and locks the band in. From the
+// pad's ends it runs forward along both side walls, across the front recess, onto the hook.
 combo_x = 37.0;
-ht_a_depth = 3.5;   // recess depth into the closed side
-ht_post_d = 4;      // post the loop hooks round ...
-ht_cap_d = 7;       // ... with a cap on its outer end (stretch the loop over it)
-ht_cap_t = 1.2;
-ht_post_y = -3;     // post centre, behind the pocket floor (cage frame)
+combo_ht_o = 6;     // groove centre below the top of the pad's ledge (pad offset o; on the part of the pad that bears on the forehead); ht_cord tall, ht_depth deep
 module place_cage() translate(w_s0) rotate([w_screw_up, 0, 0]) translate(-cage_screw_pt) mirror([1, 0, 0]) children();
 module closed_slab(c) let(ox0 = cx0(c) - clear - wall_l)   // the closed wall's section, extruded outward (cage frame)
     translate([ox0 + 1, 0, 0]) rotate([0, -90, 0]) linear_extrude(height = 25)
         projection(cut = true) rotate([0, 90, 0]) translate([-(ox0 + 1), 0, 0]) cage(c);
-module ht_anchor_cut(c) let(xb = -combo_x - cage_screw_pt[0], pd = (c[2] - c[5]) + clear_y,
-        zr = (cz1(c) - c[4] - lens_clear) - hook_h - 0.5 + (hook_eye_w + 0.5) / 2, r = ht_post_d / 2)
-    difference() {
-        translate([xb - 1, 0, 0]) rotate([90, 0, 90]) linear_extrude(height = 1 + ht_a_depth) hull() {
-            translate([ht_post_y, zr]) circle(r = r + ht_cord, $fn = 48);
-            translate([pd + front_t + 2, zr - ht_cord]) square([0.01, 2 * ht_cord]);
+module pad_groove() let(zc = ref_top - (z_step + combo_ht_o), yc = ref_front_to_floor - 39.0)   // (cage frame)
+    intersection() {
+        translate([-150, -150, zc - ht_cord / 2]) cube([300, 300, ht_cord]);
+        translate([0, ht_depth, 0]) union() {
+            pad_cut();
+            // past the ends of the pad (the closed-side slab, the open side): straight on at the corner depth
+            translate([ix0 - 60, -80, -150]) cube([60.5, 80 + yc, 300]);
+            translate([x_open8 - 0.5, -80, -150]) cube([60.5, 80 + yc, 300]);
         }
-        translate([xb - 2, ht_post_y, zr]) rotate([0, 90, 0]) cylinder(d = ht_post_d, h = ht_a_depth + 3, $fn = 32);
-        translate([xb - 2, ht_post_y, zr]) rotate([0, 90, 0]) cylinder(d = ht_cap_d, h = 2 + ht_cap_t, $fn = 48);
+    }
+// the wedge block's closed side, filled out flush with the bed (combo_x) above w_widen_z, with a 45-degree taper below that,
+// so the strip between the side slot and the cage doesn't hang in the air when printed on that side
+module block_fill() let(yt = w_fy(w_h), yb = yt - w_top_l - (w_h - w_plate_t) / tan(w_back), xb = w_block_w / 2 - 0.01,
+        prof = [[-w_fy(10), -10], [yt, w_h], [yt - w_top_l, w_h], [yb, w_plate_t], [yb, -10]])
+    intersection() {
+        translate([xb, 0, 0]) rotate([90, 0, 90]) linear_extrude(height = combo_x + 1 - xb) polygon(prof);
+        translate([xb, 0, w_widen_z - (combo_x - xb)]) rotate([0, -45, 0]) translate([-300, -150, 0]) cube([600, 300, 300]);
     }
 module combo(c) let($combo_c = c) difference() {
     intersection() {
-        union() { wedge(true); cage_on_wedge(c); place_cage() closed_slab(c); }
+        union() { wedge(true); cage_on_wedge(c); place_cage() closed_slab(c); block_fill(); }
         translate([-150, -150, -150]) cube([150 + combo_x, 300, 300]);
     }
     w_slot_cuts(tear = true);
-    place_cage() ht_anchor_cut(c);
+    place_cage() pad_groove();
 }
 if (PART == "combo8")  combo(H8);
 if (PART == "combo13") combo(H13);
+if (PART == "combo8_sec") intersection() { combo(H8); translate([fit_sec_x - 0.5, -100, -100]) cube([1, 200, 200]); }   // side slice (check)
 // fit test for the dome: an open frame with the true helmet-side surface, printed FLAT TOP DOWN (no supports): an 8 mm rim, a
 // cross through the middle and rings round the 4 holes. Top is flat, w_test_t above the highest point of the helmet surface.
 w_test_t = 1.5;
