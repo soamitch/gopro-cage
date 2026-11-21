@@ -16,7 +16,7 @@
 //   "nutplate"     - the plate inside the helmet that holds the 4 M3 nylocs (pause-and-insert, see np_pause_z)
 //   "fit8_sec"    - a 1 mm slice through cage8 bolted to the wedge at x = fit_sec_x (side view of the contact)
 //   "helmet8" / "fit8_helmet" - the helmet shape implied by the wedge underside + cage pad / everything together (preview)
-PART = "nutplate";
+PART = "cage8";
 
 $fn = 48;
 
@@ -151,7 +151,7 @@ pad_lip_concave = 0.5;   // how far the middle of the lip is pulled back, mm
 $pc = variant_corner(pad_S_amp, pad_lip_concave);
 
 tab_tip = [45.85, 0];   // tip of the top tab, flush with the top face (45.85 from the front, measured)
-tab_tip_r = 1.0;        // the tip is rounded with this radius (no sharp point)
+tab_tip_r = 0;          // tip rounding radius. 0 = sharp point, so the cage top runs flush onto the wedge (1.0 cut the tip ~3 mm short)
 tab_drop = 0;           // REVERTED (was 2.0): the tab's underside is lowered this much (the tab stood 1.8-2.2 mm off the wedge's top with the screws tight)
 // rounds the corner p (between neighbours pa and pb) with radius r; returns the arc as points (2D)
 function fillet(p, pa, pb, r, n = 6) = let(
@@ -171,7 +171,8 @@ function tab_junction() = let(
     P + t * u;
 // tab outline, [depth, height below top]: top-back corner and lower-back corner rounded, then down the underside to the panel
 function tab_pts() = let(J = tab_junction(), P0 = tab_tip, P1 = tab_tip + [0, tab_drop])
-    tab_drop < 0.05 ? concat(fillet(P0, [0, 0], J, tab_tip_r, 8), [J])
+    tab_tip_r < 0.01 ? (tab_drop < 0.05 ? [P0, J] : [P0, P1, J])
+                    : tab_drop < 0.05 ? concat(fillet(P0, [0, 0], J, tab_tip_r, 8), [J])
                     : concat(fillet(P0, [0, 0], P1, tab_tip_r), fillet(P1, P0, J, tab_tip_r), [J]);
 function make_prof() = concat(
     tab_pts(),                             // tab, ending where its underside meets the screw panel
