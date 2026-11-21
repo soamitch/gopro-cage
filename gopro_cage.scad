@@ -63,6 +63,7 @@ lw_z0 = 8;  lw_z1 = 8;  lw_y0 = 4;  lw_y1 = 6;
 
 // elastic (hair tie) slot: a round hole (measured on the original) running along X through the back wall, just behind the
 // pocket floor; at the open side the floor over the hole is cut away (hole width) so the tie touches the camera there.
+cord_slot = false;   // hair-tie slot through the back of the cage (false: the tie is clamped in the wedge's ht_ groove instead)
 cord_slot_w = 6;     // slot height (the original's hole is 3 mm round; made taller so the hair tie threads easily)
 cord_slot_t0 = 3;    // slot thickness, front to back, everywhere (as the original)
 cord_slot_t = 4.5;   // ... grown toward the back to this wherever the back has room (cord_wall behind it); 3 was hard to thread
@@ -189,7 +190,7 @@ lens_cz_ref = z_top8 - H8[4] / 2;                    // lens centre z, held fixe
 // Reference geometry of the Hero 8 cage (the back interface is defined against this and never moves)
 // back_extra: the back wall is this much thicker behind the camera. The back (pad, screw panel, tab) stays exactly where it was
 // on the wedge and helmet; the pocket and the camera move back_extra further out, and the screw heads sit back_extra deeper.
-back_extra = 2;
+back_extra = 0;   // (2 gave the through-slot room; not needed with the wedge groove)
 ref_front_to_floor = front_t + (H8[2] - H8[5]) + clear_y - back_extra;   // outside front face (of the original) to pocket floor
 ref_top    = z_top8 + clear + top_t;                          // outer top
 ref_bottom = -floor_to_screw - bottom_t;                      // outer bottom
@@ -360,7 +361,7 @@ module cage(c) {
         // concave curve across the back of the pad (never closer than cord_wall to the hair-tie slot)
         difference() {
             pad_cut();
-            translate([ox0 - 2, cord_y0, ref_top - cord_from_top]) stadium_x(cord_slot_w + 2 * cord_wall, cord_slot_t0 + 2 * cord_wall, xo - ox0 + 14);
+            if (cord_slot) translate([ox0 - 2, cord_y0, ref_top - cord_from_top]) stadium_x(cord_slot_w + 2 * cord_wall, cord_slot_t0 + 2 * cord_wall, xo - ox0 + 14);
         }
         // camera pocket (open to the right)
         translate([px0, 0, pz0]) rbox(xo + 10 - px0, pz1 - pz0, pd, c[3] + clear);
@@ -378,20 +379,22 @@ module cage(c) {
         translate([ox0 + scr_from_left_outer, pd - 1, oz0 + scr_from_bottom_outer]) cube([scr_w, front_t + 2, scr_h]);
         // PLACEHOLDER window through the left wall
         translate([ox0 - 1, lw_y0, pz0 + lw_z0]) cube([wall_l + 2, pd - lw_y0 - lw_y1, (pz1 - pz0) - lw_z0 - lw_z1]);
-        // elastic cord hole through the back wall, with a notch around the opening on the open side
-        translate([ox0 - 1, cord_y0, ref_top - cord_from_top]) stadium_x(cord_slot_w, cord_slot_t0, xo - ox0 + 12);
-        // ... grown to cord_slot_t toward the back, except where that would come closer than cord_wall to the pad's curved surface
-        difference() {
-            translate([ox0 - 1, cord_y, ref_top - cord_from_top]) stadium_x(cord_slot_w, cord_slot_t, xo - ox0 + 12);
-            translate([0, cord_wall, 0]) pad_cut();
+        if (cord_slot) {
+            // elastic cord hole through the back wall, with a notch around the opening on the open side
+            translate([ox0 - 1, cord_y0, ref_top - cord_from_top]) stadium_x(cord_slot_w, cord_slot_t0, xo - ox0 + 12);
+            // ... grown to cord_slot_t toward the back, except where that would come closer than cord_wall to the pad's curved surface
+            difference() {
+                translate([ox0 - 1, cord_y, ref_top - cord_from_top]) stadium_x(cord_slot_w, cord_slot_t, xo - ox0 + 12);
+                translate([0, cord_wall, 0]) pad_cut();
+            }
+            // flared entry on the closed side (taller at the outside face) so the tie finds the slot
+            hull() {
+                translate([ox0 - 1, cord_y, ref_top - cord_from_top]) stadium_x(cord_slot_w + 2, cord_slot_t + 1.5, 1.01);
+                translate([ox0 + 1.2, cord_y, ref_top - cord_from_top]) stadium_x(cord_slot_w, cord_slot_t, 0.01);
+            }
+            translate([xo - cord_notch_l, cord_y, ref_top - cord_from_top - cord_slot_w / 2])
+                cube([cord_notch_l + 10, -cord_y + 1, cord_slot_w]);
         }
-        // flared entry on the closed side (taller at the outside face) so the tie finds the slot
-        hull() {
-            translate([ox0 - 1, cord_y, ref_top - cord_from_top]) stadium_x(cord_slot_w + 2, cord_slot_t + 1.5, 1.01);
-            translate([ox0 + 1.2, cord_y, ref_top - cord_from_top]) stadium_x(cord_slot_w, cord_slot_t, 0.01);
-        }
-        translate([xo - cord_notch_l, cord_y, ref_top - cord_from_top - cord_slot_w / 2])
-            cube([cord_notch_l + 10, -cord_y + 1, cord_slot_w]);
         // channel of the elastic hook: its floor is the recess floor (rec_d into the front face), it runs out through the left end of
         // the hook (no wall there) and is open at the bottom, flared on the outer side
         hull() {
@@ -517,6 +520,13 @@ module heightfield(x0, x1, y0, y1, lo, hi, n = 40) {
     polyhedron(pts, faces);
 }
 w_front_r = 6;     // front corners rounded in plan view (all the way up) to fit the rounded corners of the helmet's pocket (GUESS)
+// Hair-tie anchor: a U-shaped groove in the wedge's front face (the seam with the cage), below the cage screw on the cage's
+// closed side. The tie's loop goes round the post inside the U; the cage, bolted on, closes the groove so it can't lift out.
+// Both strands run out of the closed-side edge, then forward round the cage to the hook. The tie stays uncut.
+ht_cord  = 3.5;    // groove width per strand (hair tie thickness + a little)
+ht_depth = 3;      // groove depth into the wedge (a hair less than the tie, so the cage clamps it too)
+ht_post_d = 4;     // post the loop wraps round
+ht_below = 9;      // post centre below the screw axis, measured along the seam (leaves ~1.3 mm round the screw hole)
 w_tab_gap = 0.2;   // gap left under the cage's top tab (the screw panel on the front face is the seat)
 module wedge(fit_cage = true) {
     yt = w_fy(w_h);                                  // top of the front wall
@@ -575,6 +585,15 @@ module wedge(fit_cage = true) {
         for (m = [0, 1]) mirror([m, 0, 0]) translate([w_block_w / 2 - w_front_r, w_fy(w_toe_tip_z) - w_front_r, -50])   // from the toe tip (the front edge)
             linear_extrude(height = 100) difference() { square([w_front_r + 20, w_front_r + 20]); circle(r = w_front_r, $fn = 48); }
         recess_corners();
+        // hair-tie groove (see ht_): in the seam plane, local frame: u = x (toward the closed side), v = down the seam, n = into the wedge
+        if (fit_cage) let(T2 = cage2w([pad_floor_depth + thin_t, tri_h]), F2 = cage2w([ramp_end_depth, z_step]),
+                ev = (F2 - T2) / norm(F2 - T2), en0 = [ev[1], -ev[0]], en = en0[0] < 0 ? en0 : -en0,
+                sx = w_screw_dx / 2, L = 30, r = ht_post_d / 2)
+            multmatrix([[1, 0, 0, sx], [0, ev[0], en[0], w_s0[1]], [0, ev[1], en[1], w_s0[2]], [0, 0, 0, 1]])
+                translate([0, 0, -2]) linear_extrude(height = ht_depth + 2) difference() {
+                    hull() { translate([0, ht_below]) circle(r = r + ht_cord, $fn = 48); translate([L, ht_below]) circle(r = r + ht_cord, $fn = 48); }
+                    hull() { translate([0, ht_below]) circle(r = r, $fn = 32); translate([L, ht_below]) circle(r = r, $fn = 32); }
+                }
         // the dome under the plate
         heightfield(-50, 50, -w_plate_l - 10, 10, function(x, y) -30, function(x, y) dome(x, y));
         // under the toe: lifted w_toe_lift, flat for w_toe_flat, then sloping up to meet the front wall at the tip
