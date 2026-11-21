@@ -714,8 +714,8 @@ if (PART == "padtest_set")
 // Print it as modelled: helmet side up, resting on the flat bottoms of the four bosses, with (tree) supports under the bars.
 // At the pause drop an M3 nyloc into each pocket, nylon ring DOWN (toward the bed); the bolts come in from the top (helmet side).
 np_shell_t = 4;              // helmet shell thickness at the holes (measured: 4)
-np_nut_af = 5.5 + 0.2;       // M3 nyloc: 5.5 across flats + a snug drop-in clearance (was +0.3: the roof sagged into the ring round the nut)
-np_nut_h  = 4.0;             // M3 nyloc: 4 mm tall, pocket exactly as deep, so the roof's first layer lands ON the nut (was +0.2: an air gap)
+np_nut_af = 5.5 + 0.3;       // M3 nyloc: 5.5 across flats + clearance (+0.2 was too tight: the nuts didn't fit)
+np_nut_h  = 4.0 + 0.2;       // M3 nyloc: 4 mm tall + a little, so the nut sits below the layer printed after the pause
 np_floor = 1.0;              // under the nut (head side); the bolt hole goes through, so any bolt length works
 np_roof  = 1.2;              // over the nut, against the helmet (at the thinnest boss)
 np_boss_af = 9.5;            // hex bosses round the nuts
