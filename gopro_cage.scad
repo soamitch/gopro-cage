@@ -16,7 +16,7 @@
 //   "nutplate"     - the plate inside the helmet that holds the 4 M3 nylocs (pause-and-insert, see np_pause_z)
 //   "fit8_sec"    - a 1 mm slice through cage8 bolted to the wedge at x = fit_sec_x (side view of the contact)
 //   "helmet8" / "fit8_helmet" - the helmet shape implied by the wedge underside + cage pad / everything together (preview)
-PART = "cage8";
+PART = "wedge";
 
 $fn = 48;
 
@@ -544,7 +544,7 @@ module wedge(fit_cage = true) {
                 }
             // top raised to sit under the cage's top tab (w_tab_gap below it)
             if (fit_cage) let(p1 = cage2w([pad_floor_depth + thin_t, tri_h]) - [0, w_tab_gap], p2 = cage2w(tab_tip) - [0, w_tab_gap])
-                rotate([90, 0, 90]) linear_extrude(height = max(w_block_w, w_top_w), center = true)
+                rotate([90, 0, 90]) linear_extrude(height = w_block_w, center = true)   // (at w_top_w it overhung the hex-key slots)
                     polygon([[w_fy(w_h - 1), w_h - 1], [w_fy(p1[1]), p1[1]], p2, [p2[0], w_h - 1]]);
             // flat, level washer seats on the rear holes: top is w_washer_h above the highest point of the plate around the seat
             intersection() {   // (trimmed to the plate's rounded corners)
