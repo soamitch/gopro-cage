@@ -667,23 +667,26 @@ module w_slot_cuts(tear = false, cap = false) let(yt = w_fy(w_h), yf = w_fy(w_sl
 // the ledge; the pad sits on the helmet's forehead, so bolting the piece down closes the groove and locks the band in. From the
 // pad's ends it runs forward along both side walls, across the front recess, onto the hook.
 combo_x = 37.0;
-combo_ht_o = 6;     // groove centre below the top of the pad's ledge (pad offset o; on the part of the pad that bears on the forehead); ht_cord tall, ht_depth deep
+combo_ht_o = 4.5;   // groove centre below the top of the pad's ledge (pad offset o): high on the pad, centred on its bulge (where it bears on the forehead)
 module place_cage() translate(w_s0) rotate([w_screw_up, 0, 0]) translate(-cage_screw_pt) mirror([1, 0, 0]) children();
 // the closed wall's section, extruded outward (cage frame). Taken just inside the pocket (wall_l - 0.1 in from the outside), past
 // the rounding of the cage's edges, so the slab is the cage's full outline and no rounded lip hangs over it.
 module closed_slab(c) let(xs = cx0(c) - clear - wall_l + wall_l - 0.1)
     translate([xs, 0, 0]) rotate([0, -90, 0]) linear_extrude(height = 30)
         projection(cut = true) rotate([0, 90, 0]) translate([-xs, 0, 0]) cage(c);
-module pad_groove() let(zc = ref_top - (z_step + combo_ht_o), yc = ref_front_to_floor - 39.0)   // (cage frame)
-    intersection() {
-        translate([-150, -150, zc - ht_cord / 2]) cube([300, 300, ht_cord]);
-        translate([0, ht_depth, 0]) union() {
-            pad_cut();
-            // past the ends of the pad (the closed-side slab, the open side): straight on at the corner depth
-            translate([ix0 - 60, -80, -150]) cube([60.5, 80 + yc, 300]);
-            translate([x_open8 - 0.5, -80, -150]) cube([60.5, 80 + yc, 300]);
+module pad_groove() let(zc = ref_top - (z_step + combo_ht_o), yc = ref_front_to_floor - 39.0, r = ht_cord / 2, n = 9)   // (cage frame)
+    // round-bottomed (U): stacked thin bands, each cut to the depth of a circle of radius r centred (ht_depth - r) in from the pad
+    for (i = [0 : n - 1]) let(z0 = zc - r + 2 * r * i / n, z1 = z0 + 2 * r / n, zm = (z0 + z1) / 2,
+            dep = (ht_depth - r) + sqrt(max(0, r * r - (zm - zc) * (zm - zc))))
+        intersection() {
+            translate([-150, -150, z0]) cube([300, 300, z1 - z0 + 0.001]);
+            translate([0, dep, 0]) union() {
+                pad_cut();
+                // past the ends of the pad (the closed-side slab, the open side): straight on at the corner depth
+                translate([ix0 - 60, -80, -150]) cube([60.5, 80 + yc, 300]);
+                translate([x_open8 - 0.5, -80, -150]) cube([60.5, 80 + yc, 300]);
+            }
         }
-    }
 // the wedge block's closed side, filled out flush with the bed (combo_x) above w_widen_z, with a 45-degree taper below that,
 // so the strip between the side slot and the cage doesn't hang in the air when printed on that side
 module block_fill() let(yt = w_fy(w_h), yb = yt - w_top_l - (w_h - w_plate_t) / tan(w_back), xb = w_block_w / 2 - 0.01,
