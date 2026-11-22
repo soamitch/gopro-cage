@@ -682,7 +682,7 @@ module w_slot_cuts(tear = false, cap = false) let(yt = w_fy(w_h), yf = w_fy(w_sl
 // Hair tie: stays uncut and wraps all the way round the cage. Behind the cage it lies in a groove across the curved pad, just below
 // the ledge; the pad sits on the helmet's forehead, so bolting the piece down closes the groove and locks the band in. From the
 // pad's ends it runs forward along both side walls, across the front recess, onto the hook.
-combo_x = 37.0;
+combo_x = 36.0;   // flat closed side (the bed as printed). 34.6 = cage8 closed wall; the plate is trimmed to here (the back bolt holes reach 34.75, so this leaves ~1.25 mm beside them)
 combo_ht_o = 2;     // groove centre below the top of the pad's ledge (pad offset o): right in front of the wedge's toe (nose)
 module place_cage() translate(w_s0) rotate([w_screw_up, 0, 0]) translate(-cage_screw_pt) mirror([1, 0, 0]) children();
 // the closed wall's section, extruded outward (cage frame). Taken just inside the pocket (wall_l - 0.1 in from the outside), past
