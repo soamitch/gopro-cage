@@ -633,7 +633,12 @@ module wedge(fit_cage = true) {
         if (is_undef($combo_c)) w_slot_cuts();
         // helmet bolt holes
         for (p = [[-sx0, yf_b], [sx0, yf_b], [-w_bolt_dx_b / 2, yb_b], [w_bolt_dx_b / 2, yb_b]])
-            translate([p[0], p[1], -30]) cylinder(d = w_bolt_d, h = 60, $fn = 24);
+            translate([p[0], p[1], -30]) linear_extrude(height = 60) hull() {
+                circle(d = w_bolt_d, $fn = 24);
+                // combo (printed on its closed side, +x down): a 45-degree point toward the top of the print (-x), so the
+                // hole doesn't sag into an oval; the bolt still sits in the round part
+                if (!is_undef($combo_c)) translate([-w_bolt_d / 2 * sqrt(2), 0]) square(0.01, center = true);
+            }
         // cage screw channels + nut pockets (nut inserted from the helmet side)
         if (is_undef($combo_c)) for (sx = [-1, 1]) translate([sx * w_screw_dx / 2, 0, 0]) {
             translate(s0 - 2 * dir) rotate([-(90 - w_screw_up), 0, 0]) rotate([180, 0, 0]) cylinder(d = w_screw_d, h = 2 + w_screw_len - w_cage_wall + 1.5, $fn = 24);
