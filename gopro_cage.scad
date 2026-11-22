@@ -90,6 +90,7 @@ engrave_bottom      = "801-786-9255";  // bottom face ("" for none); reads with 
 engrave_bottom_size = 4.5;
 engrave_d     = 0.6;    // depth
 engrave_font  = "Liberation Sans:style=Bold";
+hook_run_out = 4;   // the hook channel runs this far past its old end (1 mm short of the open end): out through the open end
 hook_flare = 1.2;   // the channel mouth at the bottom is flared by this much per side
 hook_eye_w = 2.5;  hook_eye_t = 3.4;   // channel height (open at the bottom, 1.5 mm roof left above it) and width
 module stadium_x(w, t, len) {   // stadium cross-section (w along Z, t along Y) extruded along +X
@@ -414,11 +415,13 @@ module cage(c) {
         }
         // channel of the elastic hook: its floor is the recess floor (rec_d into the front face), it runs out through the left end of
         // the hook (no wall there) and is open at the bottom, flared on the outer side
+        // (and runs out through the open end of the front wall too, so the tie stays in it round that corner instead of climbing
+        // over a 1 mm lip)
         hull() {
             translate([xo - hook_x_len - 2 - 1, pd + front_t - rec_d, lw_z0v - hook_h + 0.5])
-                cube([hook_x_len + 2, hook_eye_t, hook_eye_w - 0.5]);
+                cube([hook_x_len + 2 + hook_run_out, hook_eye_t, hook_eye_w - 0.5]);
             translate([xo - hook_x_len - 2 - 1, pd + front_t - rec_d, lw_z0v - hook_h - 0.5])
-                cube([hook_x_len + 2, hook_eye_t + 2 * hook_flare, 0.01]);
+                cube([hook_x_len + 2 + hook_run_out, hook_eye_t + 2 * hook_flare, 0.01]);
         }
         // recess for the hair tie along the front face, from the closed (left) wall to the hook, so the tie lies nearly flush
         translate([ox0 - 1, pd + front_t - rec_d, lw_z0v - hook_h - 0.5])
