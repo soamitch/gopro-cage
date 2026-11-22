@@ -17,7 +17,7 @@
 //   "nutplate"     - the plate inside the helmet that holds the 4 M3 nylocs (pause-and-insert, see np_pause_z)
 //   "fit8_sec"    - a 1 mm slice through cage8 bolted to the wedge at x = fit_sec_x (side view of the contact)
 //   "helmet8" / "fit8_helmet" - the helmet shape implied by the wedge underside + cage pad / everything together (preview)
-PART = "combo8";
+PART = "combo8_fit";
 
 $fn = 48;
 
@@ -527,7 +527,10 @@ w_toe_lift_start = 3.7;   // the lifted part starts this far in front of the fro
 w_toe_flat = 10.5 - w_toe_lift_start;   // lifted, flat part of the underside; ends where it did before (4 measured from the old start)
 w_toe_slope = 45;    // underside slope up to the tip (GUESS)
 w_yf_b = w_fy(w_toe_tip_z) - w_toe_reach;   // front holes, y (front wall foot at y = 0)
-w_plate_l = -(w_yf_b - w_bolt_dy) + w_bolt_d / 2 + w_bolt_edge;   // wall foot to back edge, set by the holes (~64)
+// extra plate behind the back holes: the MakerWorld Cookie Fuel plates (same hole pattern) run 5.9 behind the back hole
+// centres, ours ran 4.35, so the back edge came up short of the recess
+w_plate_back_extra = 1.5;
+w_plate_l = -(w_yf_b - w_bolt_dy) + w_bolt_d / 2 + w_bolt_edge + w_plate_back_extra;   // wall foot to back edge (~65.5)
 w_slot_wall = (w_fy(w_slot_z) - (w_yf_b + w_bolt_front));         // front wall thickness in front of the side slots
 
 // (not clipped: the curve keeps going down past the holes to the plate edges, like the original)
@@ -606,6 +609,7 @@ module wedge(fit_cage = true) {
                 translate([0, 0, -30]) linear_extrude(height = 70) outline();      // (was clipping the low corners flat)
                 heightfield(-45, 45, -w_plate_l - 5, 5, function(x, y) dome(x, y) - 0.01, function(x, y) dome(x, y) + w_plate_t);
             }
+            w_lip();   // edge lip under the plate (see w_lip_h)
         }
         // the cage's own back (Hero 8 and Hero 13 cages share it): the wedge front takes its exact shape, so nothing collides
         if (fit_cage) { if (is_undef($combo_c)) { cage_on_wedge(H8); cage_on_wedge(H13); }
@@ -624,8 +628,8 @@ module wedge(fit_cage = true) {
                     translate([-60, ht_below - ht_cord / 2, -2]) cube([120, ht_cord, 0.01]);
                     translate([-60, ht_below, ht_depth - ht_cord / 2]) rotate([0, 90, 0]) cylinder(d = ht_cord, h = 120, $fn = 32);
                 }
-        // the dome under the plate
-        heightfield(-50, 50, -w_plate_l - 10, 10, function(x, y) -30, function(x, y) dome(x, y));
+        // the dome under the plate (except the edge lip)
+        difference() { heightfield(-50, 50, -w_plate_l - 10, 10, function(x, y) -30, function(x, y) dome(x, y)); w_lip(); }
         // under the toe: lifted w_toe_lift, flat for w_toe_flat, then sloping up to meet the front wall at the tip
         let(y0 = yf_b + w_toe_lift_start)
             heightfield(-50, 50, y0, 15, function(x, y) -30,
@@ -735,7 +739,7 @@ module block_fill() let(yt = w_fy(w_h), yb = yt - w_top_l - (w_h - w_plate_t) / 
 // ends of the pad; cut out of the combo so nothing of it (e.g. wedge block left where the Hero 13 cage used to be cut away)
 // can reach the helmet
 module combo_helmet_cut() let(pe = $pad_ext, yc = w_yf_b - w_bolt_dy / 2, y0 = w_yf_b + w_toe_lift_start)
-    intersection() {
+    difference() { intersection() {
         heightfield(-50, 50, -w_plate_l - 5, 40, function(x, y) -40,
             function(x, y) y <= y0 ? w_dome(x, y, yc)
                 : w_dome(x, y, yc) + w_toe_lift * min(1, (y - y0) / 0.5) + max(0, y - y0 - w_toe_flat) * tan(w_toe_slope), 80);
@@ -743,7 +747,7 @@ module combo_helmet_cut() let(pe = $pad_ext, yc = w_yf_b - w_bolt_dy / 2, y0 = w
             translate([ix0 - pe, -80, ref_bottom + 0.5]) cube([x_open8 - ix0 + 2 * pe, 80, ref_top - ref_bottom - 1]);
             difference() { interface(H8); pad_cut(); pad_relief(); }
         }
-    }
+    } w_lip(); }   // (the edge lip stays)
 module combo(c) let($combo_c = c, $pad_ext = 12) difference() {
     intersection() {
         union() { wedge(true); cage_on_wedge(c); place_cage() difference() { closed_slab(c); pad_cut(); pad_relief(); } block_fill(); }
@@ -795,6 +799,28 @@ module recess_corners() let(yc = w_yf_b - w_bolt_dy / 2, r = w_bolt_d / 2 + w_bo
         }
         heightfield(-50, 50, -w_plate_l - 10, 15, function(x, y) -40, function(x, y) w_dome(x, y, yc) + w_toe_lift + 0.01);
     }
+// Edge lip under the plate: the recess drops away round its edge more than the dome does. The MakerWorld Cookie Fuel plates
+// (measured from their 3MFs) follow an R120 sphere exactly in the middle, then step down 2.1 mm in a ~4.5 mm band all round the
+// edge (a rounded outer edge, a ~1 mm step inside). Ours: the band runs round the in-recess outline (sides, back, round the
+// holes, and the front edge up to the toe lift); its bottom is their surface (R120, lined up at the dome's peak) minus
+// w_lip_h, never above our dome. Our dome is already ~1 mm lower at the front/back edges (ry 90), so the lip is ~2.1 deep at the
+// sides and ~1.1 at the back. Inner and outer walls at 45 deg (stepped in w_lip_n layers).
+w_lip_h = 2.1;       // lip depth below the R120 reference surface (measured on the MakerWorld plates)
+w_lip_w = 4.5;       // band width, in from the plate edge (measured ~4-4.5)
+w_lip_ref_r = 120;   // their dome radius, both ways
+w_lip_edge = 0.8;    // outer bottom edge chamfer (theirs is rounded ~1 mm)
+w_lip_n = 6;
+module w_lip() let(yc = w_yf_b - w_bolt_dy / 2,
+        hi = function(x, y) w_dome(x, y, yc) + 0.01,
+        lo = function(x, y) min(w_dome(x, y, yc) - 0.05, w_dome_h - (x * x + (y - yc) * (y - yc)) / (2 * w_lip_ref_r) - w_lip_h))
+    for (i = [1 : w_lip_n]) let(f = i / w_lip_n)
+        intersection() {
+            translate([0, 0, -50]) linear_extrude(height = 100) difference() {
+                offset(delta = -w_lip_edge * f) frame_footprint(true);
+                offset(delta = -(w_lip_w - f * w_lip_h)) frame_footprint(true);
+            }
+            heightfield(-45, 45, -w_plate_l - 5, 5, function(x, y) hi(x, y) - f * (hi(x, y) - lo(x, y)), hi, 60);
+        }
 // footprint of a test frame: the whole plate (with the toe), or just the part that sits in the recess
 module frame_footprint(recess_only) if (recess_only) let(r = w_bolt_d / 2 + w_bolt_edge) round_corners() offset(r = r, $fn = 48) polygon(w_quad(r - w_toe_lift_start));
     else hull() projection() wedge_plate_shell();
