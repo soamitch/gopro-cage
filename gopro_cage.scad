@@ -17,7 +17,7 @@
 //   "nutplate"     - the plate inside the helmet that holds the 4 M3 nylocs (pause-and-insert, see np_pause_z)
 //   "fit8_sec"    - a 1 mm slice through cage8 bolted to the wedge at x = fit_sec_x (side view of the contact)
 //   "helmet8" / "fit8_helmet" - the helmet shape implied by the wedge underside + cage pad / everything together (preview)
-PART = "combo8_fit";
+PART = "combo8";
 
 $fn = 48;
 
@@ -504,6 +504,10 @@ w_washer_h = 0.5;           // level seat top stands this far above the plate at
 // helmet hole pattern (measured on the helmet, edge to edge minus one hole): a trapezoid, wider at the back
 w_bolt_dx_f = 63 - 3.5;     // front pair, centre to centre (59.5)
 w_bolt_dx_b = 69.5 - 3.5;   // back pair, centre to centre (66)
+// back holes in the wedge/combo only: moved out this much (total) from w_bolt_dx_b; the screws only just lined up on the
+// printed combo. The plate outline and the nut plate stay on w_bolt_dx_b.
+w_hole_dx_b_extra = 0.5;
+w_hole_dx_b = w_bolt_dx_b + w_hole_dx_b_extra;
 w_bolt_dy   = 49 - 3.5;     // front to back, centre to centre (45.5)
 w_bolt_edge = 2.6;          // plate edge to the nearest edge of each hole, on all sides (measured on the original)
 w_bolt_front = 4;           // front of the side slot to the front hole centre (measured)
@@ -599,7 +603,7 @@ module wedge(fit_cage = true) {
                     polygon([[w_fy(w_h - 1), w_h - 1], [w_fy(p1[1]), p1[1]], p2, [p2[0], w_h - 1]]);
             // flat, level washer seats on the rear holes: top is w_washer_h above the highest point of the plate around the seat
             intersection() {   // (trimmed to the plate's rounded corners)
-                for (sx = [-1, 1]) let(hx = sx * w_bolt_dx_b / 2,
+                for (sx = [-1, 1]) let(hx = sx * w_hole_dx_b / 2,
                         ztop = max([for (a = [0 : 30 : 330]) dome(hx + w_washer_d / 2 * cos(a), yb_b + w_washer_d / 2 * sin(a))]) + w_plate_t + w_washer_h)
                     translate([hx, yb_b, dome(hx, yb_b) - 5]) cylinder(d = w_washer_d, h = ztop - dome(hx, yb_b) + 5, $fn = 32);
                 translate([0, 0, -30]) linear_extrude(height = 70) outline();
@@ -636,7 +640,7 @@ module wedge(fit_cage = true) {
                 function(x, y) dome(x, y) + w_toe_lift * min(1, (y - y0) / 0.5) + max(0, y - y0 - w_toe_flat) * tan(w_toe_slope), 60);
         if (is_undef($combo_c)) w_slot_cuts();
         // helmet bolt holes
-        for (p = [[-sx0, yf_b], [sx0, yf_b], [-w_bolt_dx_b / 2, yb_b], [w_bolt_dx_b / 2, yb_b]])
+        for (p = [[-sx0, yf_b], [sx0, yf_b], [-w_hole_dx_b / 2, yb_b], [w_hole_dx_b / 2, yb_b]])
             translate([p[0], p[1], -30]) linear_extrude(height = 60) hull() {
                 circle(d = w_bolt_d, $fn = 24);
                 // combo (printed on its closed side, +x down): a 45-degree point toward the top of the print (-x), so the
@@ -827,7 +831,7 @@ module frame_footprint(recess_only) if (recess_only) let(r = w_bolt_d / 2 + w_bo
     else hull() projection() wedge_plate_shell();
 module wedge_frame(rim = 8, cross = true, recess_only = false)
     let(yc = w_yf_b - w_bolt_dy / 2, q = w_quad(w_bolt_d / 2 + w_bolt_edge - w_toe_lift_start), yb_b = w_yf_b - w_bolt_dy, sx0 = w_bolt_dx_f / 2,
-        holes = [[-sx0, w_yf_b], [sx0, w_yf_b], [-w_bolt_dx_b / 2, yb_b], [w_bolt_dx_b / 2, yb_b]],
+        holes = [[-sx0, w_yf_b], [sx0, w_yf_b], [-w_hole_dx_b / 2, yb_b], [w_hole_dx_b / 2, yb_b]],
         // flat top: w_test_t above the highest point of the underside the frame covers
         ztop = (recess_only ? max(w_dome(0, q[0][1], yc), w_dome(0, q[2][1], yc)) : w_dome_h) + w_test_t, y0 = w_yf_b + w_toe_lift_start)
     translate([0, 0, ztop]) rotate([180, 0, 0])
