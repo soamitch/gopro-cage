@@ -608,7 +608,10 @@ module wedge(fit_cage = true) {
             }
         }
         // the cage's own back (Hero 8 and Hero 13 cages share it): the wedge front takes its exact shape, so nothing collides
-        if (fit_cage) { if (is_undef($combo_c)) { cage_on_wedge(H8); cage_on_wedge(H13); } else cage_on_wedge($combo_c); }
+        if (fit_cage) { if (is_undef($combo_c)) { cage_on_wedge(H8); cage_on_wedge(H13); }
+                        // combo: cut 0.1 short (toward the cage's front) so the wedge overlaps the cage it's fused to, instead of
+                        // the two touching face to face (that left non-manifold edges in the exported STL)
+                        else translate(0.1 * [0, cos(w_screw_up), sin(w_screw_up)]) cage_on_wedge($combo_c); }
         // round the two front corners (plan view)
         for (m = [0, 1]) mirror([m, 0, 0]) translate([w_block_w / 2 - w_front_r, w_fy(w_toe_tip_z) - w_front_r, -50])   // from the toe tip (the front edge)
             linear_extrude(height = 100) difference() { square([w_front_r + 20, w_front_r + 20]); circle(r = w_front_r, $fn = 48); }
@@ -752,7 +755,7 @@ if (PART == "combo13") combo(H13);
 module combo_fit_zone() let(yc = w_yf_b - w_bolt_dy / 2, y0 = w_yf_b + w_toe_lift_start)
     union() {
         heightfield(-50, 50, -w_plate_l - 5, 3, function(x, y) -40,
-            function(x, y) 5 + (y <= y0 ? w_dome(x, y, yc)
+            function(x, y) (y <= y0 ? 5 : 8) + (y <= y0 ? w_dome(x, y, yc)   // (thicker at the toe, so the pad joins solidly)
                 : w_dome(x, y, yc) + w_toe_lift * min(1, (y - y0) / 0.5) + max(0, y - y0 - w_toe_flat) * tan(w_toe_slope)), 80);
         place_cage() translate([0, 6.5, 0]) { pad_cut(); pad_relief(); }   // (6.5: the groove leaves 3.5 behind it)
     }
