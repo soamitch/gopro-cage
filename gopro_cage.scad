@@ -17,7 +17,7 @@
 //   "nutplate"     - the plate inside the helmet that holds the 4 M3 nylocs (pause-and-insert, see np_pause_z)
 //   "fit8_sec"    - a 1 mm slice through cage8 bolted to the wedge at x = fit_sec_x (side view of the contact)
 //   "helmet8" / "fit8_helmet" - the helmet shape implied by the wedge underside + cage pad / everything together (preview)
-PART = "combo8";
+PART = "combo8_fit";
 
 $fn = 48;
 
@@ -747,6 +747,16 @@ module combo(c) let($combo_c = c, $pad_ext = 12) difference() {
 }
 if (PART == "combo8")  combo(H8);
 if (PART == "combo13") combo(H13);
+// fit test for the combo: only its helmet-side skin (base plate with its holes and washer seats, toe, and the cage's curved pad
+// with the hair-tie groove, ~4-5 mm thick), cut from the real combo; print it on the flat closed side like the real part
+module combo_fit_zone() let(yc = w_yf_b - w_bolt_dy / 2, y0 = w_yf_b + w_toe_lift_start)
+    union() {
+        heightfield(-50, 50, -w_plate_l - 5, 3, function(x, y) -40,
+            function(x, y) 5 + (y <= y0 ? w_dome(x, y, yc)
+                : w_dome(x, y, yc) + w_toe_lift * min(1, (y - y0) / 0.5) + max(0, y - y0 - w_toe_flat) * tan(w_toe_slope)), 80);
+        place_cage() translate([0, 6.5, 0]) { pad_cut(); pad_relief(); }   // (6.5: the groove leaves 3.5 behind it)
+    }
+if (PART == "combo8_fit") intersection() { combo(H8); combo_fit_zone(); }
 // checks: what the combo adds to / removes from the two-piece cage8 + wedge (bolted)
 if (PART == "combo8_extra") difference() { combo(H8); wedge(); cage_on_wedge(H8); }
 if (PART == "combo8_less")  difference() { union() { wedge(); cage_on_wedge(H8); } combo(H8); }
