@@ -702,6 +702,8 @@ module w_slot_cuts(tear = false, cap = false) let(yt = w_fy(w_h), yf = w_fy(w_sl
 // the ledge; the pad sits on the helmet's forehead, so bolting the piece down closes the groove and locks the band in. From the
 // pad's ends it runs forward along both side walls, across the front recess, onto the hook.
 combo_x = 37.1;   // flat closed side (the bed as printed) = the widest point of the base plate (37.08), so the plate isn't trimmed (2 mm left beside the back bolt hole). 34.6 = cage8 closed wall. Past the pad's closed end the back turns away from the helmet at 45 deg (pad_relief), so the extra width can't press on the forehead
+// the bed as printed for camera c: combo_x, or the cage's closed wall if that is further out (Hero 13 cage: 37.25), so the wall is never trimmed
+function combo_bed(c) = max(combo_x, -(cx0(c) - clear - wall_l) - cage_screw_pt[0]);
 combo_ht_o = 2;     // groove centre below the top of the pad's ledge (pad offset o): right in front of the wedge's toe (nose)
 module place_cage() translate(w_s0) rotate([w_screw_up, 0, 0]) translate(-cage_screw_pt) mirror([1, 0, 0]) children();
 // the closed wall's section, extruded outward (cage frame). Taken just inside the pocket (wall_l - 0.1 in from the outside), past
@@ -729,7 +731,7 @@ module pad_groove(N = 40) let(o = combo_ht_o, zc = ref_top - (z_step + o), r = h
 module block_fill() let(yt = w_fy(w_h), yb = yt - w_top_l - (w_h - w_plate_t) / tan(w_back), xb = w_block_w / 2 - 0.01,
         prof = [[-w_fy(10), -10], [yt, w_h], [yt - w_top_l, w_h], [yb, w_plate_t], [yb, -10]])
     intersection() {
-        translate([xb, 0, 0]) rotate([90, 0, 90]) linear_extrude(height = combo_x + 1 - xb)
+        translate([xb, 0, 0]) rotate([90, 0, 90]) linear_extrude(height = combo_bed($combo_c) + 1 - xb)
             let(p1 = cage2w([pad_floor_depth + thin_t, tri_h]), p2 = cage2w(tab_tip)) union() {
                 // only the front of the block (the wall between the side slot and the cage, and the slot itself): further back the
                 // block stays its two-piece width, so nothing new hangs out over the helmet's recess rim beside the plate
@@ -740,7 +742,7 @@ module block_fill() let(yt = w_fy(w_h), yb = yt - w_top_l - (w_h - w_plate_t) / 
                 }
                 polygon([[w_fy(w_h - 1), w_h - 1], [w_fy(p1[1]), p1[1]], p2, [p2[0], w_h - 1]]);   // raised top under the cage's tab
             }
-        translate([xb, 0, w_widen_z - (combo_x - xb)]) rotate([0, -45, 0]) translate([-300, -150, 0]) cube([600, 300, 300]);
+        translate([xb, 0, w_widen_z - (combo_bed($combo_c) - xb)]) rotate([0, -45, 0]) translate([-300, -150, 0]) cube([600, 300, 300]);
     }
 // the helmet's space as the two-piece parts leave it (below the wedge's underside and behind the cage's pad), widened past both
 // ends of the pad; cut out of the combo so nothing of it (e.g. wedge block left where the Hero 13 cage used to be cut away)
@@ -758,7 +760,7 @@ module combo_helmet_cut() let(pe = $pad_ext, yc = w_yf_b - w_bolt_dy / 2, y0 = w
 module combo(c) let($combo_c = c, $pad_ext = 12) difference() {
     intersection() {
         union() { wedge(true); cage_on_wedge(c); place_cage() difference() { closed_slab(c); pad_cut(); pad_relief(); } block_fill(); }
-        translate([-150, -150, -150]) cube([150 + combo_x, 300, 300]);
+        translate([-150, -150, -150]) cube([150 + combo_bed(c), 300, 300]);
     }
     w_slot_cuts(cap = true);   // (the inner end of the bed-side slot is a short ~7 mm bridge; prints fine without a 45-degree roof)
     place_cage() pad_groove();
