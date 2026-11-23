@@ -84,9 +84,9 @@ rec_d = 1.5;        // depth of the hair-tie recess in the front face (the front
 engrave_lines = ["Skydive Kapowsin"];   // front face, one entry per line
 engrave_size  = 4.5;    // front letter size
 engrave_pitch = 5.5;    // front line spacing
-engrave_top      = "Mitch Henrie";      // top face ("" for none); reads with the front edge toward you
+engrave_top      = "";      // top face ("" for none); reads with the front edge toward you
 engrave_top_size = 4.5;
-engrave_bottom      = "801-786-9255";  // bottom face ("" for none); reads with the front edge toward you, like the top
+engrave_bottom      = "";  // bottom face ("" for none); reads with the front edge toward you, like the top
 engrave_bottom_size = 4.5;
 engrave_d     = 0.6;    // depth
 engrave_font  = "Liberation Sans:style=Bold";
