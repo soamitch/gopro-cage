@@ -79,4 +79,3 @@ All dimensions are in mm.
 
 ## Folders
 - `stl/`: exported drafts of each part, kept as a print history. The highest draft number is the latest.
-- `stl/ref/`: reference models from other designers. Ignored by git, so it isn't in this repo.
